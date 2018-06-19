@@ -30,3 +30,5 @@ doc/_jekyll/_site/
 
 # Nodejs
 node_modules/
+
+mvn_install.sh

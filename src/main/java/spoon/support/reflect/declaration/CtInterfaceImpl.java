@@ -31,6 +31,11 @@ import java.util.Set;
 
 public class CtInterfaceImpl<T> extends CtTypeImpl<T> implements CtInterface<T> {
 	private static final long serialVersionUID = 1L;
+	/**
+	 * Liste des classes de paramétrage qui implémentent une interface (de paramétrage).<br/>
+	 * <b>null</b> si ce n'est pas une interface de paramétrage.
+	 */
+	public Object implentingParameterClasses = null;
 
 	@Override
 	public void accept(CtVisitor visitor) {
