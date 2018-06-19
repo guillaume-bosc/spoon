@@ -19,6 +19,7 @@ package spoon.support.reflect.declaration;
 import spoon.reflect.annotations.MetamodelPropertyField;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtRHSReceiver;
+import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtModifiable;
 import spoon.reflect.declaration.CtShadowable;
@@ -34,6 +35,8 @@ import spoon.support.DerivedProperty;
 import spoon.support.reflect.CtExtendedModifier;
 import spoon.support.reflect.CtModifierHandler;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import static spoon.reflect.path.CtRole.DEFAULT_EXPRESSION;
@@ -47,6 +50,18 @@ import static spoon.reflect.path.CtRole.TYPE;
  */
 public class CtFieldImpl<T> extends CtNamedElementImpl implements CtField<T> {
 	private static final long serialVersionUID = 1L;
+	/**
+	 * Le CopiloteParameter lié à cette CtMethod si existant
+	 */
+	public Object parameter = null;
+	/**
+	 * La liste des CtExecutable liée à ce CtField
+	 */
+	public List<CtExecutable<?>> appels = new ArrayList<>();
+	/**
+	 * La liste des cibles suivies
+	 */
+	public List<Object> cibles = new ArrayList<>();
 
 	@MetamodelPropertyField(role = CtRole.DEFAULT_EXPRESSION)
 	CtExpression<T> defaultExpression;
