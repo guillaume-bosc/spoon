@@ -51,13 +51,13 @@ import static spoon.reflect.path.CtRole.TYPE;
 public class CtFieldImpl<T> extends CtNamedElementImpl implements CtField<T> {
 	private static final long serialVersionUID = 1L;
 	/**
-	 * Le CopiloteParameter lié à cette CtMethod si existant
+	 * Le CopiloteParameter liÃ© Ã  cette CtMethod si existant
 	 */
 	public Object parameter = null;
 	/**
-	 * La liste des CtExecutable liée à ce CtField
+	 * La liste des CtExecutable liÃ©s Ã  ce CtField
 	 */
-	public List<CtExecutable<?>> appels = new ArrayList<>();
+	public List<Object> appels = new ArrayList<>();
 	/**
 	 * La liste des cibles suivies
 	 */
