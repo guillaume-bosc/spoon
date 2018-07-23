@@ -37,7 +37,7 @@ public enum JavaIdentifiers {
 	/**
 	 * Contains the Java keywords.
 	 */
-	public static Set<String> KEYWORDS;
+	public static final Set<String> KEYWORDS;
 
 	static {
 		KEYWORDS = new HashSet<>();
@@ -47,7 +47,7 @@ public enum JavaIdentifiers {
 	}
 
 	static boolean isJavaIdentifier(String s) {
-		if (s.length() == 0 || !Character.isJavaIdentifierStart(s.charAt(0))) {
+		if (s.isEmpty() || !Character.isJavaIdentifierStart(s.charAt(0))) {
 			return false;
 		}
 		for (int i = 1; i < s.length(); i++) {
@@ -106,5 +106,4 @@ public enum JavaIdentifiers {
 		}
 		return isLegalJavaIdentifier(string);
 	}
-
 }

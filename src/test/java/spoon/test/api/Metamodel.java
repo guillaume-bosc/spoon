@@ -871,7 +871,7 @@ public class Metamodel {
 				.field(CtRole.TYPE, false, false)
 				.field(CtRole.DEFAULT_EXPRESSION, false, false)
 				.field(CtRole.COMMENT, false, false)
-
+				.field(CtRole.IS_INFERRED, false, false)
 			));
 
 			types.add(new Type("CtIf", spoon.reflect.code.CtIf.class, spoon.support.reflect.code.CtIfImpl.class, fm -> fm
@@ -960,7 +960,7 @@ public class Metamodel {
 			));
 
 			types.add(new Type("CtArrayTypeReference", spoon.reflect.reference.CtArrayTypeReference.class, spoon.support.reflect.reference.CtArrayTypeReferenceImpl.class, fm -> fm
-				.field(CtRole.NAME, false, false)
+				.field(CtRole.NAME, true, true)
 				.field(CtRole.IS_SHADOW, false, false)
 				.field(CtRole.IS_IMPLICIT, false, false)
 				.field(CtRole.MODIFIER, true, true)

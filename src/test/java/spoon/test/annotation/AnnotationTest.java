@@ -173,8 +173,6 @@ public class AnnotationTest {
 
 		// the good value is selected, not the default value
 		assertEquals("8", a.getAllValues().get("max").toString());
-
-
 	}
 
 	@Test
@@ -544,6 +542,7 @@ public class AnnotationTest {
 	@Test
 	public void testUsageOfTypeAnnotationInReturnTypeInMethod() throws Exception {
 		final Launcher launcher = new Launcher();
+		launcher.getEnvironment().setNoClasspath(false);
 		launcher.addInputResource("./src/test/java/spoon/test/annotation/testclasses/AnnotationsAppliedOnAnyTypeInAClass.java");
 		launcher.buildModel();
 		Factory factory = launcher.getFactory();
@@ -564,6 +563,7 @@ public class AnnotationTest {
 	@Test
 	public void testUsageOfTypeAnnotationOnParameterInMethod() throws Exception {
 		final Launcher launcher = new Launcher();
+		launcher.getEnvironment().setNoClasspath(false);
 		launcher.addInputResource("./src/test/java/spoon/test/annotation/testclasses/AnnotationsAppliedOnAnyTypeInAClass.java");
 		launcher.buildModel();
 		Factory factory = launcher.getFactory();
@@ -582,6 +582,7 @@ public class AnnotationTest {
 	@Test
 	public void testUsageOfTypeAnnotationOnLocalVariableInMethod() throws Exception {
 		final Launcher launcher = new Launcher();
+		launcher.getEnvironment().setNoClasspath(false);
 		launcher.addInputResource("./src/test/java/spoon/test/annotation/testclasses/AnnotationsAppliedOnAnyTypeInAClass.java");
 		launcher.buildModel();
 		Factory factory = launcher.getFactory();
@@ -766,6 +767,7 @@ public class AnnotationTest {
 	@Test
 	public void testOutputGeneratedByTypeAnnotation() throws Exception {
 		final Launcher launcher = new Launcher();
+		launcher.getEnvironment().setNoClasspath(false);
 		launcher.addInputResource("./src/test/java/spoon/test/annotation/testclasses/AnnotationsAppliedOnAnyTypeInAClass.java");
 		launcher.buildModel();
 		// we only write to disk here
@@ -930,6 +932,7 @@ public class AnnotationTest {
 	@Test
 	public void testAbstractAllAnnotationProcessor() throws Exception {
 		Launcher spoon = new Launcher();
+		spoon.getEnvironment().setNoClasspath(false);
 		spoon.addInputResource("./src/test/java/spoon/test/annotation/testclasses/AnnotationsAppliedOnAnyTypeInAClass.java");
 		spoon.addInputResource("./src/test/java/spoon/test/annotation/testclasses/BasicAnnotation.java");
 		spoon.addInputResource("./src/test/java/spoon/test/annotation/testclasses/TypeAnnotation.java");
@@ -1171,8 +1174,6 @@ public class AnnotationTest {
 		factory.getEnvironment().setNoClasspath(true);
 		spoon.addInputResource("./src/test/resources/noclasspath/annotation/issue1307/SpecIterator.java");
 		spoon.buildModel();
-
-
 
 		List<CtAnnotation> overrideAnnotations = factory.getModel().getElements(new TypeFilter<CtAnnotation>(CtAnnotation.class));
 
@@ -1481,9 +1482,9 @@ public class AnnotationTest {
 	@Test
 	public void testAnnotationArray() throws Exception {
 		// contract: getValue should return a value as close as possible from the sourcecode:
-        // i.e. even if the annotation should return an Array, it should return a single element
-        // if the value is given without the braces. The same behaviour should be used both for
-        // spooned source code and shadow classes.
+		// i.e. even if the annotation should return an Array, it should return a single element
+		// if the value is given without the braces. The same behaviour should be used both for
+		// spooned source code and shadow classes.
 		
 		Method barOneValueMethod = DumbKlass.class.getMethod("barOneValue");
 		Method barMultipleValueMethod = DumbKlass.class.getMethod("barMultipleValues");
@@ -1532,6 +1533,5 @@ public class AnnotationTest {
 		assertEquals(annotationOne.getAnnotationType(), shadowAnnotationOne.getAnnotationType());
 		assertTrue(shadowAnnotationOne.getValue("role") instanceof CtLiteral); // should be CtLiteral
 		assertEquals(annotationOne.getValue("role"), shadowAnnotationOne.getValue("role")); // should pass
-
 	}
 }

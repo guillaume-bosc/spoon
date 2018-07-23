@@ -5,11 +5,9 @@ import org.junit.Test;
 import spoon.Launcher;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
-import spoon.reflect.cu.position.NoSourcePosition;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtPackage;
 import spoon.reflect.declaration.CtType;
-import spoon.support.JavaOutputProcessor;
 import spoon.support.reflect.cu.position.PartialSourcePositionImpl;
 import spoon.test.api.testclasses.Bar;
 
@@ -22,7 +20,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -103,6 +100,22 @@ public class TestCompilationUnit {
         } catch (UnsupportedOperationException e) {
             // do nothing
         }
+    }
+
+    @Test
+    public void testCompilationUnitSourcePosition() throws IOException {
+        // contract: the CompilationUnit has root source position
+        File resource = new File("./src/test/java/spoon/test/model/Foo.java");
+        final Launcher launcher = new Launcher();
+        launcher.addInputResource(resource.getPath());
+        launcher.buildModel();
+
+        CompilationUnit cu = launcher.getFactory().CompilationUnit().getOrCreate(resource.getCanonicalPath());
+        SourcePosition sp = cu.getPosition();
+        assertNotNull(sp);
+        assertEquals(0, sp.getSourceStart());
+        assertEquals(cu.getOriginalSourceCode().length(), sp.getSourceEnd() + 1);
+        assertSame(cu, sp.getCompilationUnit());
     }
 
     @Test

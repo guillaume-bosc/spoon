@@ -37,6 +37,7 @@ public class NoClasspathTest {
 		Launcher spoon = new Launcher();
 		spoon.getEnvironment().setNoClasspath(true);
 		spoon.getEnvironment().setLevel("OFF");
+		spoon.getEnvironment().setCommentEnabled(false); // avoid getting the comments for the equals
 		spoon.addInputResource("./src/test/resources/spoon/test/noclasspath/fields");
 		spoon.getEnvironment().setSourceOutputDirectory(new File("target/spooned/apitest"));
 		spoon.run();
@@ -96,7 +97,7 @@ public class NoClasspathTest {
 		}
 
 		{
-			CtMethod<?> method = clazz.getMethod("m3",new CtTypeReference[0]);
+			CtMethod<?> method = clazz.getMethod("m3", new CtTypeReference[0]);
 			assertNotNull(method);
 			List<CtInvocation<?>> invocations = method.getElements(new TypeFilter<CtInvocation<?>>(CtInvocation.class));
 			assertEquals(1, invocations.size());
@@ -107,7 +108,6 @@ public class NoClasspathTest {
 			assertEquals("field", fa.getVariable().getSimpleName());
 			assertEquals("int x = first().field", statement.toString());
 		}
-
 	}
 
 	@Test
@@ -169,13 +169,13 @@ public class NoClasspathTest {
 		spoon = new Launcher();
 		spoon.getEnvironment().setNoClasspath(true);
 		spoon.getEnvironment().setSourceClasspath(new String[] { targetBinPath });
-		spoon.addInputResource(sourceInputDirPath+"/AnotherClass.java");
+		spoon.addInputResource(sourceInputDirPath + "/AnotherClass.java");
 		spoon.buildModel();
 
 		CtType anotherclass = spoon.getFactory().Type().get("org.acme.AnotherClass");
 		assertEquals(1, anotherclass.getFields().size());
 
-		CtField field = (CtField)anotherclass.getFields().get(0);
+		CtField field = (CtField) anotherclass.getFields().get(0);
 
 		CtTypeReference myClassReference = spoon.getFactory().Type().createReference("fr.acme.MyClass");
 		assertEquals(myClassReference, field.getType());

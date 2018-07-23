@@ -63,7 +63,7 @@ public class PatternPrinter extends DefaultGenerator {
 		List<Object> generated = generateTargets(node, (ImmutableMap) null, null);
 		StringBuilder sb = new StringBuilder();
 		for (Object ele : generated) {
-			sb.append(ele.toString()).append('\n');
+			sb.append(ele.toString()).append(System.getProperty("line.separator"));
 		}
 		return sb.toString();
 	}
@@ -144,7 +144,7 @@ public class PatternPrinter extends DefaultGenerator {
 				params.add(paramOnElement);
 			}
 		}
-		if (isCommentVisible(ele) && params.size() > 0) {
+		if (isCommentVisible(ele) && !params.isEmpty()) {
 			ele.addComment(ele.getFactory().Code().createComment(getSubstitutionRequestsDescription(ele, params), CommentType.BLOCK));
 			params.clear();
 		}
@@ -243,7 +243,7 @@ public class PatternPrinter extends DefaultGenerator {
 			return true;
 		}
 		return false;
-	};
+	}
 
 	static String getElementTypeName(CtElement element) {
 		String name = element.getClass().getSimpleName();

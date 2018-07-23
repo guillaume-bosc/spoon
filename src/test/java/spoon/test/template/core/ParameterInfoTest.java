@@ -2,7 +2,6 @@ package spoon.test.template.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
@@ -97,7 +96,7 @@ public class ParameterInfoTest {
 	@Test
 	public void testOptionalSingleValueParameterByName() {
 		ParameterInfo namedParam = new MapParameterInfo("year")
-				.setMinOccurences(0);
+				.setMinOccurrences(0);
 		{//adding null value into an container with minCount == 0, returns unchanged container.
 			//because minCount == 0 means that value is optional
 			ImmutableMap container = new ImmutableMapImpl().putValue("a", "b");
@@ -110,7 +109,7 @@ public class ParameterInfoTest {
 		//adding null value into an container with minCount == 1, returns null -> means NO match, null is not allowed.
 		//because minCount == 0 means that value is optional
 		ParameterInfo namedParam = new MapParameterInfo("year")
-				.setMinOccurences(1);
+				.setMinOccurrences(1);
 		{
 			ImmutableMap container = new ImmutableMapImpl().putValue("a", "b");
 			assertNull(namedParam.addValueAs(container, null));

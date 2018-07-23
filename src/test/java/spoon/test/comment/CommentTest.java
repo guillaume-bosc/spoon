@@ -4,7 +4,10 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.Test;
 import spoon.Launcher;
+import spoon.SpoonException;
+import spoon.reflect.CtModel;
 import spoon.reflect.code.CtBinaryOperator;
+import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtConditional;
 import spoon.reflect.code.CtConstructorCall;
@@ -27,6 +30,8 @@ import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtEnum;
+import spoon.reflect.declaration.CtEnumValue;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtInterface;
 import spoon.reflect.declaration.CtMethod;
@@ -45,6 +50,7 @@ import spoon.support.compiler.jdt.JDTSnippetCompiler;
 import spoon.test.comment.testclasses.BlockComment;
 import spoon.test.comment.testclasses.Comment1;
 import spoon.test.comment.testclasses.Comment2;
+import spoon.test.comment.testclasses.CommentsOnStatements;
 import spoon.test.comment.testclasses.InlineComment;
 import spoon.test.comment.testclasses.JavaDocComment;
 import spoon.test.comment.testclasses.JavaDocEmptyCommentAndTags;
@@ -59,10 +65,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.io.IOUtils.write;
 import static org.junit.Assert.*;
@@ -280,7 +288,7 @@ public class CommentTest {
 		assertEquals("// Comment Field" + newLine
 				+ "// comment field 2" + newLine
 				+ "// comment in field" + newLine
-				+ "private int field = 10;// after field\n", field.toString());
+				+ "private int field = 10;// after field" + newLine, field.toString());
 
 		CtAnonymousExecutable ctAnonymousExecutable = type.getAnonymousExecutables().get(0);
 		assertEquals(1, ctAnonymousExecutable.getComments().size());
@@ -401,7 +409,7 @@ public class CommentTest {
 				+ ") ? // comment before then CtConditional" + newLine
 				+ "null// comment after then CtConditional" + newLine
 				+ " : // comment before else CtConditional" + newLine
-				+ "new java.lang.Double((j / ((double) (i - 1))))", ctLocalVariable1.toString());
+				+ "new java.lang.Double((j / ((double) (i - 1))))// comment after else CtConditional" + newLine, ctLocalVariable1.toString());
 
 		CtNewArray ctNewArray = (CtNewArray) ((CtLocalVariable) m1.getBody().getStatement(11)).getDefaultExpression();
 		assertEquals(createFakeComment(f, "last comment at the end of array"), ctNewArray.getComments().get(0));
@@ -749,6 +757,7 @@ public class CommentTest {
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.getEnvironment().setCommentEnabled(true);
+		launcher.getEnvironment().setComplianceLevel(10);
 		// interfaces.
 		launcher.addInputResource("./src/main/java/spoon/reflect/");
 		launcher.addInputResource("./src/main/java/spoon/support/reflect/");
@@ -905,5 +914,81 @@ public class CommentTest {
 			String expected = literal.getValue();
 			assertEquals(literal.getPosition().toString(), expected, comment.getContent());
 		}
+	}
+
+	@Test
+	public void testEnumValueComment() {
+		// contract: enum value comments are taken into account
+
+		Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/java/spoon/test/comment/testclasses/EnumClass.java");
+		launcher.getEnvironment().setCommentEnabled(true);
+		CtModel model = launcher.buildModel();
+
+		CtEnum<?> ctEnum = model.getElements(new TypeFilter<>(CtEnum.class)).get(0);
+		List<CtEnumValue<?>> enumValues = ctEnum.getEnumValues();
+
+		assertEquals(4, enumValues.size());
+
+		CtEnumValue firstEnumValue = enumValues.get(0);
+		assertEquals("FAIL", firstEnumValue.getSimpleName());
+
+		List<CtComment> comments = firstEnumValue.getComments();
+		assertEquals(1, comments.size());
+		assertTrue(comments.get(0) instanceof CtJavaDoc);
+		assertEquals("Throw {@link SpoonException} if a conflict happens, it is the default in most cases. But there are some standard Pattern builder algorithms (mainly these which deals with legacy Templates), which are using the other modes.", comments.get(0).getContent());
+
+		CtEnumValue<?> thirdEnumValue = enumValues.get(2);
+		assertEquals("KEEP_OLD_NODE", thirdEnumValue.getSimpleName());
+
+		comments = thirdEnumValue.getComments();
+		assertEquals(1, comments.size());
+		assertTrue(comments.get(0) instanceof CtJavaDoc);
+		assertEquals("Keep old {@link RootNode} and ignore requests to add new {@link RootNode}", comments.get(0).getContent());
+	}
+
+  @Test
+	public void testInlineCommentIfBlock() {
+		// contract: when creating an inline comment from a string with line separators, it throws an exception to create block comment
+		Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/java/spoon/test/comment/testclasses/WithIfBlock.java");
+		launcher.getEnvironment().setCommentEnabled(true);
+
+		CtModel model = launcher.buildModel();
+
+		List<CtIf> ctIfs = model.getElements(new TypeFilter<>(CtIf.class));
+
+		assertEquals(1, ctIfs.size());
+		CtIf ctIf = ctIfs.get(0);
+		try {
+			CtComment ctComment = launcher.getFactory().createInlineComment(ctIf.toString());
+			fail("Exception should have been thrown");
+		} catch (SpoonException e) {
+			assertTrue(e.getMessage().contains("consider using a block comment"));
+		}
+	}
+	@Test
+	public void testStatementComments() {
+		// contract: the statements have their comment even if they are nested in another block
+		Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/java/spoon/test/comment/testclasses/CommentsOnStatements.java");
+		launcher.getEnvironment().setCommentEnabled(true);
+
+		CtModel model = launcher.buildModel();
+		
+		List<CtStatement> statements = launcher.getFactory().Type().get(CommentsOnStatements.class).getMethodsByName("m1").get(0).getBody().getStatements();
+		assertEquals(2, statements.size());
+		CtIf ifStatement = (CtIf) statements.get(0);
+		assertEquals(Arrays.asList("// c1"), getCommentStrings(ifStatement));
+		assertEquals(Arrays.asList("// c2 belongs to toto"), getCommentStrings(((CtBlock) ifStatement.getThenStatement()).getStatement(0)));
+		CtIf if2Statement = (CtIf) ((CtBlock) ifStatement.getElseStatement()).getStatement(0);
+		assertEquals("// c3 belongs to getClass\nthis.getClass()", ((CtBlock) if2Statement.getThenStatement()).getStatement(0).toString());
+		assertEquals(Arrays.asList("// c3 belongs to getClass"), getCommentStrings(((CtBlock) if2Statement.getThenStatement()).getStatement(0)));
+
+		assertEquals(Arrays.asList("// c4 comment of return"), getCommentStrings(statements.get(1)));
+	}
+	
+	private List<String> getCommentStrings(CtElement ele) {
+		return ele.getComments().stream().map(Object::toString).collect(Collectors.toList());
 	}
 }

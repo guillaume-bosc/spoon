@@ -19,6 +19,8 @@ package spoon.metamodel;
 import static spoon.metamodel.Metamodel.addUniqueObject;
 import static spoon.metamodel.Metamodel.getOrCreate;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +41,7 @@ import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.support.DerivedProperty;
 import spoon.support.UnsettableProperty;
+import spoon.support.util.RtHelper;
 
 /**
  * Represents a property of the Spoon metamodel.
@@ -253,7 +256,7 @@ public class MetamodelProperty {
 
 	public MMMethod getMethod(MMMethodKind kind) {
 		List<MMMethod> ms = getMethods(kind);
-		return ms.size() > 0 ? ms.get(0) : null;
+		return !ms.isEmpty() ? ms.get(0) : null;
 	}
 
 	public List<MMMethod> getMethods(MMMethodKind kind) {
@@ -294,7 +297,7 @@ public class MetamodelProperty {
 	 */
 	private int getIdxOfBestMatch(List<MMMethod> methods, MMMethodKind key) {
 		MMMethod mmMethod = methods.get(0);
-		if (mmMethod.getActualCtMethod().getParameters().size() == 0) {
+		if (mmMethod.getActualCtMethod().getParameters().isEmpty()) {
 			return getIdxOfBestMatchByReturnType(methods, key);
 		} else {
 			MMMethod mmGetMethod = getMethod(MMMethodKind.GET);
@@ -537,7 +540,7 @@ public class MetamodelProperty {
 	 */
 	public MetamodelProperty getSuperProperty() {
 		List<MetamodelProperty> potentialRootSuperFields = new ArrayList<>();
-		if (roleMethods.size() > 0) {
+		if (!roleMethods.isEmpty()) {
 			potentialRootSuperFields.add(this);
 		}
 		superProperties.forEach(superField -> {
@@ -587,11 +590,27 @@ public class MetamodelProperty {
 		return roleHandler;
 	}
 
+	static boolean useRuntimeMethodInvocation = false;
+
 	/**
 	 * @param element an instance whose attribute value is read
 	 * @return a value of attribute defined by this {@link MetamodelProperty} from the provided `element`
 	 */
 	public <T, U> U getValue(T element) {
+		if (useRuntimeMethodInvocation) {
+			MMMethod method = getMethod(MMMethodKind.GET);
+			if (method != null) {
+				Method rtMethod = RtHelper.getMethod(getOwner().getImplementationClass().getActualClass(), method.getName(), 0);
+				if (rtMethod != null) {
+					try {
+						return (U) rtMethod.invoke(element);
+					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+						throw new SpoonException("Invocation of getter on " + toString() + " failed", e);
+					}
+				}
+				throw new SpoonException("Cannot invoke getter on " + toString());
+			}
+		}
 		return getRoleHandler().getValue(element);
 	}
 
@@ -600,6 +619,21 @@ public class MetamodelProperty {
 	 * @param value to be set value of attribute defined by this {@link MetamodelProperty} on the provided `element`
 	 */
 	public <T, U> void setValue(T element, U value) {
+		if (useRuntimeMethodInvocation) {
+			MMMethod method = getMethod(MMMethodKind.SET);
+			if (method != null) {
+				Method rtMethod = RtHelper.getMethod(getOwner().getImplementationClass().getActualClass(), method.getName(), 1);
+				if (rtMethod != null) {
+					try {
+						rtMethod.invoke(element, value);
+					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+						throw new SpoonException("Invocation of setter on " + toString() + " failed", e);
+					}
+					return;
+				}
+				throw new SpoonException("Cannot invoke setter on " + toString());
+			}
+		}
 		getRoleHandler().setValue(element, value);
 	}
 }

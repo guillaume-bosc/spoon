@@ -32,13 +32,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static spoon.reflect.ModelElementContainerDefaultCapacities.COMPILATION_UNIT_DECLARED_TYPES_CONTAINER_DEFAULT_CAPACITY;
 
+/**
+ * Implements a compilation unit. In Java, a compilation unit can contain only one
+ * public type declaration and other secondary types declarations (not public).
+ */
 public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 	private static final long serialVersionUID = 1L;
 
@@ -48,11 +52,18 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 
 	CtPackage ctPackage;
 
-	Collection<CtImport> imports = new HashSet<>();
+	Set<CtImport> imports = new HashSet<>();
 
 	CtModule ctModule;
 
 	File file;
+
+	private SourcePosition sourcePosition;
+	/**
+	 * The index of line breaks, as computed by JDT.
+	 * Used to compute line numbers afterwards.
+	 */
+	private int[] lineSeparatorPositions;
 
 	@Override
 	public UNIT_TYPE getUnitType() {
@@ -141,6 +152,7 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 		this.ctPackage = ctPackage;
 	}
 
+	@Override
 	public void setFile(File file) {
 		this.file = file;
 	}
@@ -193,10 +205,11 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 
 	String originalSourceCode;
 
+	@Override
 	public String getOriginalSourceCode() {
 
-		if (originalSourceCode == null) {
-			try (FileInputStream s = new FileInputStream(getFile());) {
+		if (originalSourceCode == null && getFile() != null) {
+			try (FileInputStream s = new FileInputStream(getFile())) {
 				byte[] elementBytes = new byte[s.available()];
 				s.read(elementBytes);
 				originalSourceCode = new String(elementBytes, this.getFactory().getEnvironment().getEncoding());
@@ -207,6 +220,7 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 		return originalSourceCode;
 	}
 
+	@Override
 	public int beginOfLineIndex(int index) {
 		int cur = index;
 		while (cur >= 0 && getOriginalSourceCode().charAt(cur) != '\n') {
@@ -215,6 +229,7 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 		return cur + 1;
 	}
 
+	@Override
 	public int nextLineIndex(int index) {
 		int cur = index;
 		while (cur < getOriginalSourceCode().length()
@@ -224,6 +239,7 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 		return cur + 1;
 	}
 
+	@Override
 	public int getTabCount(int index) {
 		int cur = index;
 		int tabCount = 0;
@@ -245,19 +261,21 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 	}
 
 	@Override
-	public Collection<CtImport> getImports() {
+	public Set<CtImport> getImports() {
 		return this.imports;
 	}
 
 	@Override
-	public void setImports(Collection<CtImport> imports) {
+	public void setImports(Set<CtImport> imports) {
 		this.imports = imports;
 	}
 
+	@Override
 	public Factory getFactory() {
 		return factory;
 	}
 
+	@Override
 	public void setFactory(Factory factory) {
 		this.factory = factory;
 	}
@@ -283,5 +301,26 @@ public class CompilationUnitImpl implements CompilationUnit, FactoryAccessor {
 		return myPartialSourcePosition;
 	}
 
+	@Override
+	public int[] getLineSeparatorPositions() {
+		return lineSeparatorPositions;
+	}
 
+	@Override
+	public void setLineSeparatorPositions(int[] lineSeparatorPositions) {
+		this.lineSeparatorPositions = lineSeparatorPositions;
+	}
+
+	@Override
+	public SourcePosition getPosition() {
+		if (sourcePosition == null) {
+			String sourceCode = getOriginalSourceCode();
+			if (sourceCode != null) {
+				sourcePosition = getFactory().Core().createSourcePosition(this, 0, sourceCode.length() - 1, getLineSeparatorPositions());
+			} else {
+				sourcePosition = SourcePosition.NOPOSITION;
+			}
+		}
+		return sourcePosition;
+	}
 }

@@ -12,12 +12,10 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtPackage;
-import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.CoreFactory;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.FactoryImpl;
-import spoon.reflect.visitor.filter.AbstractFilter;
 import spoon.reflect.visitor.filter.NamedElementFilter;
 import spoon.support.DefaultCoreFactory;
 import spoon.support.StandardEnvironment;
@@ -40,10 +38,13 @@ public class FactoryTest {
 		CtClass<?> type = build("spoon.test.testclasses", "SampleClass");
 		CtMethod<?> m = type.getMethodsByName("method3").get(0);
 		int i = m.getBody().getStatements().size();
+		m.putMetadata("metadata", 1);
+		int metadata = m.getAllMetadata().size();
 
 		m = m.clone();
 
 		assertEquals(i, m.getBody().getStatements().size());
+		assertEquals(metadata, m.getAllMetadata().size());
 		// cloned elements must not have an initialized parent
 		assertFalse(m.isParentInitialized());
 	}

@@ -17,6 +17,7 @@
 package spoon.pattern;
 
 import spoon.SpoonException;
+import spoon.metamodel.Metamodel;
 import spoon.pattern.internal.ValueConvertor;
 import spoon.pattern.internal.node.ListOfNodes;
 import spoon.pattern.internal.node.MapEntryNode;
@@ -132,14 +133,14 @@ public class PatternParameterConfigurator {
 	}
 
 	public PatternParameterConfigurator setMinOccurence(int minOccurence) {
-		currentParameter.setMinOccurences(minOccurence);
+		currentParameter.setMinOccurrences(minOccurence);
 		return this;
 	}
 	public PatternParameterConfigurator setMaxOccurence(int maxOccurence) {
-		if (maxOccurence == ParameterInfo.UNLIMITED_OCCURENCES || maxOccurence > 1 && currentParameter.isMultiple() == false) {
-			throw new SpoonException("Cannot set maxOccurences > 1 for single value parameter. Call setMultiple(true) first.");
+		if (maxOccurence == ParameterInfo.UNLIMITED_OCCURRENCES || maxOccurence > 1 && currentParameter.isMultiple() == false) {
+			throw new SpoonException("Cannot set maxOccurrences > 1 for single value parameter. Call setMultiple(true) first.");
 		}
-		currentParameter.setMaxOccurences(maxOccurence);
+		currentParameter.setMaxOccurrences(maxOccurence);
 		return this;
 	}
 	public PatternParameterConfigurator setMatchingStrategy(Quantifier quantifier) {
@@ -376,6 +377,7 @@ public class PatternParameterConfigurator {
 	 * 		Note these values may influence the way how pattern parameters are created.
 	 * 		This unclear and ambiguous technique was used in legacy templates
 	 * @return this to support fluent API
+	 * @deprecated since Spoon 7.0.0
 	 */
 	@Deprecated
 	public PatternParameterConfigurator byTemplateParameter(Map<String, Object> parameterValues) {
@@ -400,7 +402,7 @@ public class PatternParameterConfigurator {
 				 * Use it as Pattern parameter
 				 */
 				String fieldName = typeMember.getSimpleName();
-				String stringMarker = (param.value() != null && param.value().length() > 0) ? param.value() : fieldName;
+				String stringMarker = (param.value() != null && !param.value().isEmpty()) ? param.value() : fieldName;
 				//for the compatibility reasons with Parameters.getNamesToValues(), use the proxy name as parameter name
 				String parameterName = stringMarker;
 
@@ -520,6 +522,7 @@ public class PatternParameterConfigurator {
 	 *
 	 * @param parameterValues pattern parameter values or null if not known
 	 * @return this to support fluent API
+	 * @deprecated Since Spoon 7.0.0
 	 */
 	@Deprecated
 	public PatternParameterConfigurator byParameterValues(Map<String, Object> parameterValues) {
@@ -569,32 +572,6 @@ public class PatternParameterConfigurator {
 	}
 
 	/**
-	 * CodeElement element identified by `simpleName`
-	 * @param simpleName the name of the element or reference
-	 * @return {@link PatternParameterConfigurator} to support fluent API
-	 */
-//	public PatternParameterConfigurator codeElementBySimpleName(String simpleName) {
-//		ParameterInfo pi = getCurrentParameter();
-//		pattern.getModel().filterChildren((CtNamedElement named) -> simpleName.equals(named.getSimpleName()))
-//			.forEach((CtNamedElement named) -> {
-//				if (named instanceof CtCodeElement) {
-//					addSubstitutionRequest(pi, named);
-//				}
-//			});
-//		pattern.getModel().filterChildren((CtReference ref) -> simpleName.equals(ref.getSimpleName()))
-//		.forEach((CtReference ref) -> {
-//			if (ref instanceof CtTypeReference<?>) {
-//				return;
-//			}
-//			CtCodeElement codeElement = ref.getParent(CtCodeElement.class);
-//			if (codeElement != null) {
-//				addSubstitutionRequest(pi, codeElement);
-//			}
-//		});
-//		return this;
-//	}
-
-	/**
 	 * All spoon model string attributes whose value is equal to `stringMarker`
 	 * are subject for substitution by current parameter
 	 * @param stringMarker a string value which has to be substituted
@@ -620,7 +597,7 @@ public class PatternParameterConfigurator {
 					});
 
 				}
-			};
+			}
 		}.scan(patternBuilder.getPatternModel());
 		return this;
 	}
@@ -654,7 +631,7 @@ public class PatternParameterConfigurator {
 						return oldAttrNode;
 					});
 			}
-			};
+			}
 		}.scan(patternBuilder.getPatternModel());
 		return this;
 	}
@@ -689,6 +666,10 @@ public class PatternParameterConfigurator {
 		private void visitStringAttribute(CtElement element) {
 			for (RoleHandler roleHandler : stringAttributeRoleHandlers) {
 				if (roleHandler.getTargetType().isInstance(element)) {
+					if (Metamodel.getInstance().getConcept(element.getClass()).getProperty(roleHandler.getRole()).isUnsettable()) {
+						//do not visit unsettable string attributes, which cannot be modified by pattern
+						continue;
+					}
 					Object value = roleHandler.getValue(element);
 					if (value instanceof String) {
 						visitStringAttribute(roleHandler, element, (String) value);

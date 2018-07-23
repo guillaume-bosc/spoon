@@ -139,6 +139,7 @@ import spoon.reflect.declaration.CtAnnotationMethod;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
+import spoon.reflect.declaration.CtEnumValue;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtModule;
@@ -151,10 +152,8 @@ import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtUnboundVariableReference;
+import spoon.support.compiler.jdt.ContextBuilder.CastInfo;
 import spoon.support.reflect.CtExtendedModifier;
-
-import java.util.HashSet;
-import java.util.Set;
 
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.getBinaryOperatorKind;
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.getModifiers;
@@ -780,6 +779,14 @@ public class JDTTreeBuilder extends ASTVisitor {
 	public boolean visit(AllocationExpression allocationExpression, BlockScope scope) {
 		CtConstructorCall constructorCall = factory.Core().createConstructorCall();
 		constructorCall.setExecutable(references.getExecutableReference(allocationExpression));
+		ASTPair first = this.context.stack.getFirst();
+
+		// in case of enum values the constructor call is often implicit
+		if (first.element instanceof CtEnumValue) {
+			if (allocationExpression.sourceEnd == first.node.sourceEnd) {
+				constructorCall.setImplicit(true);
+			}
+		}
 		context.enter(constructorCall, allocationExpression);
 		return true;
 	}
@@ -849,7 +856,8 @@ public class JDTTreeBuilder extends ASTVisitor {
 
 	@Override
 	public boolean visit(ArrayTypeReference arrayTypeReference, BlockScope scope) {
-		final CtTypeAccess<Object> typeAccess = factory.Code().createTypeAccess(references.buildTypeReference(arrayTypeReference, scope));
+		CtTypeReference<Object> objectCtTypeReference = references.buildTypeReference(arrayTypeReference, scope);
+		final CtTypeAccess<Object> typeAccess = factory.Code().createTypeAccess(objectCtTypeReference);
 		if (typeAccess.getAccessedType() instanceof CtArrayTypeReference) {
 			((CtArrayTypeReference) typeAccess.getAccessedType()).getArrayType().setAnnotations(this.references.buildTypeReference(arrayTypeReference, scope).getAnnotations());
 		}
@@ -926,7 +934,11 @@ public class JDTTreeBuilder extends ASTVisitor {
 
 	@Override
 	public boolean visit(CastExpression castExpression, BlockScope scope) {
-		context.casts.add(this.references.buildTypeReference(castExpression.type, scope));
+		CastInfo ci = new CastInfo();
+		//the 8 bits from 21 to 28 represents number of enclosing brackets
+		ci.nrOfBrackets = ((castExpression.bits >>> 21) & 0xF);
+		ci.typeRef = this.references.buildTypeReference(castExpression.type, scope, true);
+		context.casts.add(ci);
 		castExpression.expression.traverse(this, scope);
 		return false;
 	}
@@ -1088,8 +1100,6 @@ public class JDTTreeBuilder extends ASTVisitor {
 			}
 		}
 		field.setSimpleName(CharOperation.charToString(fieldDeclaration.name));
-
-		Set<CtExtendedModifier> modifierSet = new HashSet<>();
 		if (fieldDeclaration.binding != null) {
 			if (fieldDeclaration.binding.declaringClass != null && fieldDeclaration.binding.declaringClass.isEnum()) {
 				//enum values take over visibility from enum type
@@ -1173,6 +1183,12 @@ public class JDTTreeBuilder extends ASTVisitor {
 	@Override
 	public boolean visit(LocalDeclaration localDeclaration, BlockScope scope) {
 		CtLocalVariable<Object> v = factory.Core().createLocalVariable();
+
+		boolean isVar = localDeclaration.type.isTypeNameVar(scope);
+
+		if (isVar) {
+			v.setInferred(true);
+		}
 		v.setSimpleName(CharOperation.charToString(localDeclaration.name));
 		if (localDeclaration.binding != null) {
 			v.setExtendedModifiers(getModifiers(localDeclaration.binding.modifiers, true, false));

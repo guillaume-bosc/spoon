@@ -42,10 +42,9 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 
 	public <W, X> java.util.Collection<X> asCollection(W element) {
 		return asList(element);
-	};
+	}
 
 	public <W, X> java.util.List<X> asList(W e) {
-//		return Collections.<X>singletonList(getValue(element));
 		return new AbstractList<X>() {
 			T element = castTarget(e);
 			boolean hasValue = SingleHandler.this.getValue(element) != null;
@@ -73,6 +72,7 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 				SingleHandler.this.setValue(element, value);
 				return (X) oldValue;
 			}
+
 			@Override
 			public boolean add(X value) {
 				if (hasValue) {
@@ -96,6 +96,7 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 				hasValue = false;
 				return oldValue;
 			}
+
 			@Override
 			public boolean remove(Object value) {
 				if (hasValue == false) {
@@ -111,6 +112,7 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 				}
 				return false;
 			}
+
 			private boolean equals(Object v1, Object v2) {
 				if (v1 == v2) {
 					return true;
@@ -121,9 +123,9 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 				return v1.equals(v2);
 			}
 		};
-	};
+	}
 
 	public <W, X> java.util.Set<X> asSet(W element) {
 		return Collections.<X>singleton(getValue(element));
-	};
+	}
 }
