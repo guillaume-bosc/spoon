@@ -97,6 +97,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.lang.String.format;
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.searchPackage;
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.searchType;
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.searchTypeBinding;
@@ -279,6 +280,26 @@ public class ReferenceBuilder {
 			}
 			if (!access.contains(CtPackage.PACKAGE_SEPARATOR)) {
 				access = searchType(access, this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.imports);
+			}
+			boolean isNull = false;
+			boolean isTypeNull = false;
+			for (CompilationUnitDeclaration compilationUnitDeclaration : units) {
+				if (!isNull && compilationUnitDeclaration == null) {
+					this.jdtTreeBuilder.getLogger().error(
+							format("Erreur unit null :  %s at %s", access,
+									this.jdtTreeBuilder.getContextBuilder().stack.peek().element.getPosition()));
+					isNull = true;
+					continue;
+				}
+				if (!isTypeNull && compilationUnitDeclaration.types == null) {
+					this.jdtTreeBuilder.getLogger().error(
+							format("Erreur unit.type null :  %s at %s", access,
+									this.jdtTreeBuilder.getContextBuilder().stack.peek().element.getPosition()));
+					isTypeNull = true;
+				}
+				if (isNull && isTypeNull) {
+					break;
+				}
 			}
 			final TypeBinding accessBinding = searchTypeBinding(access, units);
 			if (accessBinding != null && listener.onAccess(tokens, i)) {
