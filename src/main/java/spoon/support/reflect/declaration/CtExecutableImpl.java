@@ -50,25 +50,29 @@ import static spoon.reflect.path.CtRole.THROWN;
 public abstract class CtExecutableImpl<R> extends CtNamedElementImpl implements CtExecutable<R> {
 	private static final long serialVersionUID = 1L;
 	/**
-	 * La CopiloteMethod reliée à cette CtMethod
+	 * La CopiloteMethod reliï¿½e ï¿½ cette CtMethod
 	 */
 	public Object data = null;
 	/**
-	 * Le CopiloteParameter lié à cette CtMethod si existant
+	 * Le CopiloteParameter liï¿½ ï¿½ cette CtMethod si existant
 	 */
 	public Object parameter = null;
 	/**
-	 * La Map<CtField,CopiloteModule> lié à cette CtMethod si existant
+	 * La Map<CtField,CopiloteModule> liï¿½ ï¿½ cette CtMethod si existant
 	 */
 	public Object module = null;
 	/**
-	 * Spécifie si cette CtMethod peut être ignorée durant l'analyse
+	 * Spï¿½cifie si cette CtMethod peut ï¿½tre ignorï¿½e durant l'analyse
 	 */
 	public boolean toIgnore = false;
 	/**
-	 * Map des méthodes qui surchargent (overriding methods) à partir du qualifiedname d'un CtType
+	 * Map des mï¿½thodes qui surchargent (overriding methods) ï¿½ partir du qualifiedname d'un CtType
 	 */
 	public Map<String, List<CtMethod<?>>> overridingMethods = new HashMap<>();
+	/**
+	 * La liste des CtExecutable appelant ce CtExecutable
+	 */
+	public List<CtExecutable<?>> referencedBy = new ArrayList<>();
 
 	@MetamodelPropertyField(role = BODY)
 	CtBlock<?> body;
