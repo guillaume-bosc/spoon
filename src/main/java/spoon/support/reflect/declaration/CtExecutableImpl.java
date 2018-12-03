@@ -21,7 +21,6 @@ import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtBodyHolder;
 import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtExecutable;
-import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.reference.CtExecutableReference;
@@ -30,10 +29,8 @@ import spoon.support.util.QualifiedNameBasedSortedSet;
 import spoon.support.visitor.SignaturePrinter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static spoon.reflect.ModelElementContainerDefaultCapacities.PARAMETERS_CONTAINER_DEFAULT_CAPACITY;
@@ -49,30 +46,30 @@ import static spoon.reflect.path.CtRole.THROWN;
  */
 public abstract class CtExecutableImpl<R> extends CtNamedElementImpl implements CtExecutable<R> {
 	private static final long serialVersionUID = 1L;
-	/**
-	 * La CopiloteMethod reli�e � cette CtMethod
-	 */
-	public Object data = null;
-	/**
-	 * Le CopiloteParameter li� � cette CtMethod si existant
-	 */
-	public Object parameter = null;
-	/**
-	 * La Map<CtField,CopiloteModule> li� � cette CtMethod si existant
-	 */
-	public Object module = null;
-	/**
-	 * Sp�cifie si cette CtMethod peut �tre ignor�e durant l'analyse
-	 */
-	public boolean toIgnore = false;
-	/**
-	 * Map des m�thodes qui surchargent (overriding methods) � partir du qualifiedname d'un CtType
-	 */
-	public Map<String, List<CtMethod<?>>> overridingMethods = new HashMap<>();
-	/**
-	 * La liste des CtExecutable appelant ce CtExecutable
-	 */
-	public List<CtExecutable<?>> referencedBy = new ArrayList<>();
+//	/**
+//	 * La CopiloteMethod reli�e � cette CtMethod
+//	 */
+//	public Object data = null;
+//	/**
+//	 * Le CopiloteParameter li� � cette CtMethod si existant
+//	 */
+//	public Object parameter = null;
+//	/**
+//	 * La Map<CtField,CopiloteModule> li� � cette CtMethod si existant
+//	 */
+//	public Object module = null;
+//	/**
+//	 * Sp�cifie si cette CtMethod peut �tre ignor�e durant l'analyse
+//	 */
+//	public boolean toIgnore = false;
+//	/**
+//	 * Map des m�thodes qui surchargent (overriding methods) � partir du qualifiedname d'un CtType
+//	 */
+//	public Map<String, List<CtMethod<?>>> overridingMethods = new HashMap<>();
+//	/**
+//	 * La liste des CtExecutable appelant ce CtExecutable
+//	 */
+//	public List<CtExecutable<?>> referencedBy = new ArrayList<>();
 
 	@MetamodelPropertyField(role = BODY)
 	CtBlock<?> body;

@@ -86,22 +86,22 @@ import static spoon.reflect.path.CtRole.TYPE_PARAMETER;
 public abstract class CtTypeImpl<T> extends CtNamedElementImpl implements CtType<T> {
 
 	private static final long serialVersionUID = 1L;
-	/**
-	 * Le type du CtType, p.e., une classe de paramètres, une classe de module infocentre, une classe écran, etc.
-	 */
-	public int type = -1;
-	/**
-	 * Le code de l'écran si la classe représente un écran, null sinon.
-	 */
-	public String codeEcran = null;
-	/**
-	 * Liste des sous CtType de ce CtTypeImpl
-	 */
-	public List<CtType<?>> sousTypes = new ArrayList<>();
-	/**
-	 * Le point d'entrée correspondant s'il existe ou <i>null</i>.
-	 */
-	public Object data = null;
+//	/**
+//	 * Le type du CtType, p.e., une classe de parametres, une classe de module infocentre, une classe ecran, etc.
+//	 */
+//	public int type = -1;
+//	/**
+//	 * Le code de l'ecran si la classe represente un ecran, null sinon.
+//	 */
+//	public String codeEcran = null;
+//	/**
+//	 * Liste des sous CtType de ce CtTypeImpl
+//	 */
+//	public List<CtType<?>> sousTypes = new ArrayList<>();
+//	/**
+//	 * Le point d'entree correspondant s'il existe ou <i>null</i>.
+//	 */
+//	public Object data = null;
 
 	@MetamodelPropertyField(role = CtRole.TYPE_PARAMETER)
 	List<CtTypeParameter> formalCtTypeParameters = emptyList();

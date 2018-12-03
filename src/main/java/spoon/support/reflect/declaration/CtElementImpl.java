@@ -105,6 +105,7 @@ public abstract class CtElementImpl implements CtElement, Serializable {
 		return list.isEmpty() ? Collections.<T>emptyList() : Collections.unmodifiableList(list);
 	}
 
+	public Map<? extends Enum<?>, Object> famzv = null;
 	Factory factory;
 
 	protected CtElement parent;
