@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.parent;
 
 import org.junit.Test;
@@ -15,7 +31,8 @@ import spoon.reflect.visitor.CtVisitable;
 import java.lang.reflect.Method;
 import java.util.Collection;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static spoon.test.parent.ContractOnSettersParametrizedTest.createCompatibleObject;
@@ -29,7 +46,7 @@ public class SetParentTest<T extends CtVisitable> {
 	private static Factory factory = createFactory();
 
 	@Parameterized.Parameters(name = "{0}")
-	public static Collection<Object[]> data() throws Exception {
+	public static Collection<Object[]> data() {
 		return createReceiverList();
 	}
 
@@ -61,6 +78,9 @@ public class SetParentTest<T extends CtVisitable> {
 		} else if ("CtModule".equals(toTest.getSimpleName())) {
 			// contract: module parent is necessarily the unnamedmodule
 			assertTrue(receiver.getParent() instanceof ModuleFactory.CtUnnamedModule);
+		} else if ("CtCompilationUnit".equals(toTest.getSimpleName())) {
+			// contract: CtCompilationUnit parent is null
+			assertNull(receiver.getParent());
 		} else {
 			// contract: there is no parent before
 			try {
@@ -76,7 +96,7 @@ public class SetParentTest<T extends CtVisitable> {
 
 		// contract: the parent has not been changed by a call to setParent on an elemnt
 		assertTrue(argument.equals(argumentClone));
-		assertFalse(argument == argumentClone);
+		assertNotSame(argument, argumentClone);
 
 	}
 

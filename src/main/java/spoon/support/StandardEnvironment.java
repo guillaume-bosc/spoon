@@ -1,21 +1,37 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support;
 
+
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import spoon.Launcher;
+import spoon.OutputType;
+import spoon.SpoonException;
+import spoon.compiler.Environment;
+import spoon.compiler.InvalidClassPathException;
+import spoon.compiler.SpoonFile;
+import spoon.compiler.SpoonFolder;
+import spoon.compiler.builder.EncodingProvider;
+import spoon.processing.FileGenerator;
+import spoon.processing.ProblemFixer;
+import spoon.processing.ProcessingManager;
+import spoon.processing.Processor;
+import spoon.processing.ProcessorProperties;
+import spoon.reflect.cu.SourcePosition;
+import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtExecutable;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.declaration.ParentNotInitializedException;
+import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
+import spoon.reflect.visitor.PrettyPrinter;
+import spoon.support.compiler.FileSystemFolder;
+import spoon.support.compiler.SpoonProgress;
+import spoon.support.modelobs.EmptyModelChangeListener;
+import spoon.support.modelobs.FineModelChangeListener;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,29 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import spoon.Launcher;
-import spoon.OutputType;
-import spoon.SpoonException;
-import spoon.compiler.Environment;
-import spoon.compiler.InvalidClassPathException;
-import spoon.compiler.SpoonFile;
-import spoon.compiler.SpoonFolder;
-import spoon.support.modelobs.EmptyModelChangeListener;
-import spoon.support.modelobs.FineModelChangeListener;
-import spoon.processing.FileGenerator;
-import spoon.processing.ProblemFixer;
-import spoon.processing.ProcessingManager;
-import spoon.processing.Processor;
-import spoon.processing.ProcessorProperties;
-import spoon.reflect.cu.SourcePosition;
-import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtExecutable;
-import spoon.reflect.declaration.CtType;
-import spoon.reflect.declaration.ParentNotInitializedException;
-import spoon.support.compiler.FileSystemFolder;
-import spoon.support.compiler.SpoonProgress;
+import java.util.function.Supplier;
 
 
 /**
@@ -92,13 +86,15 @@ public class StandardEnvironment implements Serializable, Environment {
 
 	private boolean skipSelfChecks = false;
 
-	private transient  FineModelChangeListener modelChangeListener = new EmptyModelChangeListener();
+	private transient FineModelChangeListener modelChangeListener = new EmptyModelChangeListener();
 
-	private transient  Charset encoding = Charset.defaultCharset();
+	private transient Charset encoding = Charset.defaultCharset();
+
+	private transient EncodingProvider encodingProvider;
 
 	private int complianceLevel = DEFAULT_CODE_COMPLIANCE_LEVEL;
 
-	private transient  OutputDestinationHandler outputDestinationHandler = new DefaultOutputDestinationHandler(new File(Launcher.OUTPUTDIR), this);
+	private transient OutputDestinationHandler outputDestinationHandler = new DefaultOutputDestinationHandler(new File(Launcher.OUTPUTDIR), this);
 
 	private OutputType outputType = OutputType.CLASSES;
 
@@ -107,6 +103,12 @@ public class StandardEnvironment implements Serializable, Environment {
 	private transient SpoonProgress spoonProgress = null;
 
 	private CompressionType compressionType = CompressionType.GZIP;
+
+	private boolean sniperMode = false;
+
+	private boolean ignoreDuplicateDeclarations = false;
+
+	private Supplier<PrettyPrinter> prettyPrinterCreator;
 
 	/**
 	 * Creates a new environment with a <code>null</code> default file
@@ -163,11 +165,6 @@ public class StandardEnvironment implements Serializable, Environment {
 	}
 
 	@Override
-	public void setSelfChecks(boolean skip) {
-		skipSelfChecks = skip;
-	}
-
-	@Override
 	public void disableConsistencyChecks() {
 		skipSelfChecks = true;
 	}
@@ -204,7 +201,7 @@ public class StandardEnvironment implements Serializable, Environment {
 		return processingStopped;
 	}
 
-	private void prefix(StringBuffer buffer, Level level) {
+	private void prefix(StringBuilder buffer, Level level) {
 		if (level == Level.ERROR) {
 			buffer.append("error: ");
 			errorCount++;
@@ -216,7 +213,7 @@ public class StandardEnvironment implements Serializable, Environment {
 
 	@Override
 	public void report(Processor<?> processor, Level level, CtElement element, String message) {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 
 		prefix(buffer, level);
 
@@ -252,7 +249,7 @@ public class StandardEnvironment implements Serializable, Environment {
 
 	@Override
 	public void report(Processor<?> processor, Level level, String message) {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 
 		prefix(buffer, level);
 		// Adding message
@@ -275,6 +272,7 @@ public class StandardEnvironment implements Serializable, Environment {
 	/**
 	 * This method should be called to report the end of the processing.
 	 */
+	@Override
 	public void reportEnd() {
 		logger.info("end of processing: ");
 		if (warningCount > 0) {
@@ -299,6 +297,7 @@ public class StandardEnvironment implements Serializable, Environment {
 		}
 	}
 
+	@Override
 	public void reportProgressMessage(String message) {
 		logger.info(message);
 	}
@@ -306,14 +305,17 @@ public class StandardEnvironment implements Serializable, Environment {
 	public void setDebug(boolean debug) {
 	}
 
+	@Override
 	public void setDefaultFileGenerator(FileGenerator<? extends CtElement> defaultFileGenerator) {
 		this.defaultFileGenerator = defaultFileGenerator;
 	}
 
+	@Override
 	public void setManager(ProcessingManager manager) {
 		this.manager = manager;
 	}
 
+	@Override
 	public void setProcessingStopped(boolean processingStopped) {
 		this.processingStopped = processingStopped;
 	}
@@ -323,34 +325,41 @@ public class StandardEnvironment implements Serializable, Environment {
 
 
 
+	@Override
 	public int getComplianceLevel() {
 		return complianceLevel;
 	}
 
+	@Override
 	public void setComplianceLevel(int level) {
 		complianceLevel = level;
 	}
 
+	@Override
 	public void setProcessorProperties(String processorName, ProcessorProperties prop) {
 		processorProperties.put(processorName, prop);
 	}
 
 	boolean useTabulations = false;
 
+	@Override
 	public boolean isUsingTabulations() {
 		return useTabulations;
 	}
 
+	@Override
 	public void useTabulations(boolean tabulation) {
 		useTabulations = tabulation;
 	}
 
 	int tabulationSize = 4;
 
+	@Override
 	public int getTabulationSize() {
 		return tabulationSize;
 	}
 
+	@Override
 	public void setTabulationSize(int tabulationSize) {
 		this.tabulationSize = tabulationSize;
 	}
@@ -371,7 +380,7 @@ private transient  ClassLoader inputClassloader;
 				// Check that the URLs are only file URLs
 				boolean onlyFileURLs = true;
 				for (URL url : urls) {
-					if (!url.getProtocol().equals("file")) {
+					if (!"file".equals(url.getProtocol())) {
 						onlyFileURLs = false;
 					}
 				}
@@ -568,8 +577,18 @@ private transient  ClassLoader inputClassloader;
 	}
 
 	@Override
+	public EncodingProvider getEncodingProvider() {
+		return encodingProvider;
+	}
+
+	@Override
 	public void setEncoding(Charset encoding) {
 		this.encoding = encoding;
+	}
+
+	@Override
+	public void setEncodingProvider(EncodingProvider encodingProvider) {
+		this.encodingProvider = encodingProvider;
 	}
 
 	@Override
@@ -600,5 +619,30 @@ private transient  ClassLoader inputClassloader;
 	@Override
 	public void setCompressionType(CompressionType serializationType) {
 		this.compressionType = serializationType;
+	}
+
+	@Override
+	public PrettyPrinter createPrettyPrinter() {
+		if (prettyPrinterCreator == null) {
+			// DJPP is the default mode
+			// fully backward compatible
+			return new DefaultJavaPrettyPrinter(this);
+		}
+		return prettyPrinterCreator.get();
+	}
+
+	@Override
+	public void setPrettyPrinterCreator(Supplier<PrettyPrinter> creator) {
+		this.prettyPrinterCreator = creator;
+	}
+
+	@Override
+	public boolean isIgnoreDuplicateDeclarations() {
+		return ignoreDuplicateDeclarations;
+	}
+
+	@Override
+	public void setIgnoreDuplicateDeclarations(boolean ignoreDuplicateDeclarations) {
+		this.ignoreDuplicateDeclarations = ignoreDuplicateDeclarations;
 	}
 }

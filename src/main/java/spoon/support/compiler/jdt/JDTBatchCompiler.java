@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -81,7 +70,7 @@ public class JDTBatchCompiler extends org.eclipse.jdt.internal.compiler.batch.Ma
 	@Override
 	public CompilationUnit[] getCompilationUnits() {
 
-		Map<String, CompilationUnit> pathToModCU = new HashMap<>();
+		Map<String, char[]> pathToModName = new HashMap<>();
 
 		for (int round = 0; round < 2; round++) {
 			for (CompilationUnit compilationUnit : this.compilationUnits) {
@@ -94,7 +83,6 @@ public class JDTBatchCompiler extends org.eclipse.jdt.internal.compiler.batch.Ma
 						int lastSlash = CharOperation.lastIndexOf(File.separatorChar, charName);
 						if (lastSlash != -1) {
 							char[] modulePath = CharOperation.subarray(charName, 0, lastSlash);
-							pathToModCU.put(String.valueOf(modulePath), compilationUnit);
 
 							lastSlash = CharOperation.lastIndexOf(File.separatorChar, modulePath);
 							if (lastSlash == -1) {
@@ -102,14 +90,14 @@ public class JDTBatchCompiler extends org.eclipse.jdt.internal.compiler.batch.Ma
 							} else {
 								lastSlash += 1;
 							}
-
-							char[] moduleName = CharOperation.subarray(modulePath, lastSlash, modulePath.length);
-							compilationUnit.module = moduleName;
+							//TODO the module name parsed by JDK compiler is in `this.modNames`
+							compilationUnit.module = CharOperation.subarray(modulePath, lastSlash, modulePath.length);
+							pathToModName.put(String.valueOf(modulePath), compilationUnit.module);
 						}
 					} else {
-						for (Map.Entry<String, CompilationUnit> entry : pathToModCU.entrySet()) {
+						for (Map.Entry<String, char[]> entry : pathToModName.entrySet()) {
 							if (fileName.startsWith(entry.getKey())) { // associate CUs to module by common prefix
-								compilationUnit.setModule(entry.getValue());
+								compilationUnit.module = entry.getValue();
 								break;
 							}
 						}
@@ -129,6 +117,7 @@ public class JDTBatchCompiler extends org.eclipse.jdt.internal.compiler.batch.Ma
 	public ICompilerRequestor getBatchRequestor() {
 		final ICompilerRequestor r = super.getBatchRequestor();
 		return new ICompilerRequestor() {
+			@Override
 			public void acceptResult(CompilationResult compilationResult) {
 				if (compilationResult.hasErrors()) {
 					for (CategorizedProblem problem:compilationResult.problems) {

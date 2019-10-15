@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.reference;
 
@@ -27,15 +16,13 @@ import java.lang.reflect.Array;
 
 import static spoon.reflect.path.CtRole.TYPE;
 
-public class
-CtArrayTypeReferenceImpl<T> extends CtTypeReferenceImpl<T> implements CtArrayTypeReference<T> {
+public class CtArrayTypeReferenceImpl<T> extends CtTypeReferenceImpl<T> implements CtArrayTypeReference<T> {
 	private static final long serialVersionUID = 1L;
 
 	@MetamodelPropertyField(role = TYPE)
 	CtTypeReference<?> componentType;
 
 	public CtArrayTypeReferenceImpl() {
-		super();
 	}
 
 	@Override
@@ -47,7 +34,8 @@ CtArrayTypeReferenceImpl<T> extends CtTypeReferenceImpl<T> implements CtArrayTyp
 	public CtTypeReference<?> getComponentType() {
 		if (componentType == null) {
 			// a sensible default component type to facilitate object creation and testing
-			componentType = getFactory().Type().OBJECT;
+			componentType = getFactory().Type().objectType();
+			componentType.setParent(this);
 		}
 		return componentType;
 	}
@@ -105,7 +93,35 @@ CtArrayTypeReferenceImpl<T> extends CtTypeReferenceImpl<T> implements CtArrayTyp
 	}
 
 	@Override
+	public CtTypeReference<?> getTypeErasure() {
+		CtTypeReference<?> originCT = getComponentType();
+		CtTypeReference<?> erasedCT = originCT.getTypeErasure();
+		if (originCT == erasedCT) {
+			return this;
+		}
+		CtArrayTypeReference<?> erased = this.clone();
+		erased.setComponentType(erasedCT);
+		return erased;
+	}
+
+	@Override
 	public CtArrayTypeReference<T> clone() {
 		return (CtArrayTypeReference<T>) super.clone();
+	}
+
+	@Override
+	public boolean isImplicitParent() {
+		if (componentType != null) {
+			return componentType.isImplicitParent();
+		}
+		return false;
+	}
+
+	@Override
+	public CtArrayTypeReferenceImpl<T> setImplicitParent(boolean packageIsImplicit) {
+		if (componentType != null) {
+			componentType.setImplicitParent(packageIsImplicit);
+		}
+		return this;
 	}
 }

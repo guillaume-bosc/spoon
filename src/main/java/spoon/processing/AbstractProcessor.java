@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.processing;
 
@@ -42,7 +31,6 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 	 */
 	@SuppressWarnings("unchecked")
 	public AbstractProcessor() {
-		super();
 		for (Method m : getClass().getMethods()) {
 			if ("process".equals(m.getName()) && (m.getParameterTypes().length == 1)) {
 				Class<?> c = m.getParameterTypes()[0];
@@ -71,14 +59,17 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 		processedElementTypes.clear();
 	}
 
+	@Override
 	public Environment getEnvironment() {
 		return getFactory().getEnvironment();
 	}
 
+	@Override
 	public Factory getFactory() {
 		return this.factory;
 	}
 
+	@Override
 	public Set<Class<? extends CtElement>> getProcessedElementTypes() {
 		return processedElementTypes;
 	}
@@ -100,14 +91,17 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 		return props;
 	}
 
+	@Override
 	public TraversalStrategy getTraversalStrategy() {
 		return TraversalStrategy.POST_ORDER;
 	}
 
+	@Override
 	public void init() {
 		this.initProperties(loadProperties());
 	}
 
+	@Override
 	public boolean isToBeProcessed(E candidate) {
 		return true;
 	}
@@ -115,6 +109,7 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 	/**
 	 * Helper method to initialize the properties of a given processor.
 	 */
+	@Override
 	public void initProperties(ProcessorProperties properties) {
 		ProcessorUtils.initProperties(this, properties);
 	}
@@ -123,9 +118,11 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 	 * The manual meta-model processing cannot be overridden (use
 	 * {@link AbstractManualProcessor}) to do so.
 	 */
+	@Override
 	public final void process() {
 	}
 
+	@Override
 	public void processingDone() {
 		// do nothing by default
 	}
@@ -137,6 +134,7 @@ public abstract class AbstractProcessor<E extends CtElement> implements Processo
 		processedElementTypes.remove(elementType);
 	}
 
+	@Override
 	public void setFactory(Factory factory) {
 		this.factory = factory;
 	}

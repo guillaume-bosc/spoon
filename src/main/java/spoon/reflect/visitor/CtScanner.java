@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor;
 
@@ -75,6 +64,7 @@ import spoon.reflect.declaration.CtAnnotationMethod;
 import spoon.reflect.declaration.CtAnnotationType;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtCompilationUnit;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtEnum;
@@ -87,6 +77,7 @@ import spoon.reflect.declaration.CtPackageExport;
 import spoon.reflect.declaration.CtProvidedService;
 import spoon.reflect.declaration.CtModuleRequirement;
 import spoon.reflect.declaration.CtPackage;
+import spoon.reflect.declaration.CtPackageDeclaration;
 import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.declaration.CtUsedService;
@@ -105,6 +96,7 @@ import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtUnboundVariableReference;
 import spoon.reflect.reference.CtWildcardReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
 
 
 /**
@@ -120,7 +112,6 @@ public abstract class CtScanner implements CtVisitor {
 	 * Default constructor.
 	 */
 	public CtScanner() {
-		super();
 	}
 
 	/**
@@ -742,7 +733,6 @@ public abstract class CtScanner implements CtVisitor {
 		scan(CtRole.PACKAGE_REF, ref.getPackage());
 		scan(CtRole.DECLARING_TYPE, ref.getDeclaringType());
 		scan(CtRole.ANNOTATION, ref.getAnnotations());
-		scan(CtRole.BOUNDING_TYPE, ref.getBoundingType());
 		exit(ref);
 	}
 
@@ -969,6 +959,34 @@ public abstract class CtScanner implements CtVisitor {
 		scan(CtRole.SERVICE_TYPE, usedService.getServiceType());
 		scan(CtRole.ANNOTATION, usedService.getAnnotations());
 		exit(usedService);
+	}
+
+	@Override
+	public void visitCtCompilationUnit(CtCompilationUnit compilationUnit) {
+		enter(compilationUnit);
+		scan(CtRole.COMMENT, compilationUnit.getComments());
+		scan(CtRole.ANNOTATION, compilationUnit.getAnnotations());
+		scan(CtRole.PACKAGE_DECLARATION, compilationUnit.getPackageDeclaration());
+		scan(CtRole.DECLARED_IMPORT, compilationUnit.getImports());
+		scan(CtRole.DECLARED_MODULE_REF, compilationUnit.getDeclaredModuleReference());
+		scan(CtRole.DECLARED_TYPE_REF, compilationUnit.getDeclaredTypeReferences());
+		exit(compilationUnit);
+	}
+
+	@Override
+	public void visitCtPackageDeclaration(CtPackageDeclaration packageDeclaration) {
+		enter(packageDeclaration);
+		scan(CtRole.COMMENT, packageDeclaration.getComments());
+		scan(CtRole.ANNOTATION, packageDeclaration.getAnnotations());
+		scan(CtRole.PACKAGE_REF, packageDeclaration.getReference());
+		exit(packageDeclaration);
+	}
+
+	@Override
+	public void visitCtTypeMemberWildcardImportReference(CtTypeMemberWildcardImportReference wildcardReference) {
+		enter(wildcardReference);
+		scan(CtRole.TYPE_REF, wildcardReference.getTypeReference());
+		exit(wildcardReference);
 	}
 }
 

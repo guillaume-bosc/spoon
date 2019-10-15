@@ -1,22 +1,12 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor;
 
 import spoon.reflect.code.CtLiteral;
+import spoon.reflect.code.LiteralBase;
 import spoon.reflect.cu.SourcePosition;
 
 /**
@@ -27,6 +17,42 @@ abstract class LiteralHelper {
 	private LiteralHelper() {
 	}
 
+	private static String getBasedString(Integer value, LiteralBase base) {
+		if (base == LiteralBase.BINARY) {
+			return "0b" + Integer.toBinaryString(value);
+		} else if (base == LiteralBase.OCTAL) {
+			return "0" + Integer.toOctalString(value);
+		} else if (base == LiteralBase.HEXADECIMAL) {
+			return "0x" + Integer.toHexString(value);
+		}
+		return Integer.toString(value);
+	}
+
+	private static String getBasedString(Long value, LiteralBase base) {
+		if (base == LiteralBase.BINARY) {
+			return "0b" + Long.toBinaryString(value) + "L";
+		} else if (base == LiteralBase.OCTAL) {
+			return "0" + Long.toOctalString(value) + "L";
+		} else if (base == LiteralBase.HEXADECIMAL) {
+			return "0x" + Long.toHexString(value) + "L";
+		}
+		return Long.toString(value) + "L";
+	}
+
+	private static String getBasedString(Float value, LiteralBase base) {
+		if (base == LiteralBase.HEXADECIMAL) {
+			return Float.toHexString(value) + "F";
+		}
+		return Float.toString(value) + "F";
+	}
+
+	private static String getBasedString(Double value, LiteralBase base) {
+		if (base == LiteralBase.HEXADECIMAL) {
+			return Double.toHexString(value);
+		}
+		return Double.toString(value);
+	}
+
 	/**
 	 * @param literal to be converted literal
 	 * @return source code representation of the literal
@@ -34,10 +60,14 @@ abstract class LiteralHelper {
 	public static <T> String getLiteralToken(CtLiteral<T> literal) {
 		if (literal.getValue() == null) {
 			return "null";
+		} else if (literal.getValue() instanceof Integer) {
+			return getBasedString((Integer) literal.getValue(), literal.getBase());
 		} else if (literal.getValue() instanceof Long) {
-			return literal.getValue() + "L";
+			return getBasedString((Long) literal.getValue(), literal.getBase());
 		} else if (literal.getValue() instanceof Float) {
-			return literal.getValue() + "F";
+			return getBasedString((Float) literal.getValue(), literal.getBase());
+		} else if (literal.getValue() instanceof Double) {
+			return getBasedString((Double) literal.getValue(), literal.getBase());
 		} else if (literal.getValue() instanceof Character) {
 
 			boolean mayContainsSpecialCharacter = true;

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -20,7 +9,6 @@ import org.apache.log4j.Logger;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
 import org.eclipse.jdt.internal.compiler.env.ICompilationUnit;
-
 import spoon.SpoonException;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtBlock;
@@ -30,8 +18,7 @@ import spoon.reflect.code.CtCatch;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtConditional;
 import spoon.reflect.code.CtIf;
-import spoon.reflect.code.CtJavaDoc;
-import spoon.reflect.code.CtJavaDocTag;
+import spoon.reflect.code.CtLambda;
 import spoon.reflect.code.CtNewArray;
 import spoon.reflect.code.CtStatement;
 import spoon.reflect.code.CtStatementList;
@@ -39,6 +26,9 @@ import spoon.reflect.code.CtSwitch;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.cu.position.BodyHolderSourcePosition;
+import spoon.reflect.cu.position.DeclarationSourcePosition;
+import spoon.reflect.declaration.CtAnnotation;
+import spoon.reflect.declaration.CtAnnotationType;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
@@ -59,11 +49,11 @@ import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 
 import java.io.BufferedReader;
-import java.io.CharArrayReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -72,7 +62,7 @@ import java.util.regex.Pattern;
 /**
  * The comment builder that will insert all element of a CompilationUnitDeclaration into the Spoon AST
  */
-class JDTCommentBuilder {
+public class JDTCommentBuilder {
 
 	private static final Logger LOGGER = Logger.getLogger(JDTCommentBuilder.class);
 
@@ -97,7 +87,7 @@ class JDTCommentBuilder {
 		this.sourceUnit = declarationUnit.compilationResult.compilationUnit;
 		this.contents = sourceUnit.getContents();
 		this.filePath = CharOperation.charToString(sourceUnit.getFileName());
-		this.spoonUnit = factory.CompilationUnit().getOrCreate(filePath);
+		this.spoonUnit = JDTTreeBuilder.getOrCreateCompilationUnit(declarationUnit, factory);
 	}
 
 	/**
@@ -138,77 +128,14 @@ class JDTCommentBuilder {
 			}
 		}
 
-		/**
-		 * Comment, which contains only javadoc tags never set content.
-		 * So set content now, to avoid unexpected null content.
-		 */
-		comment.setContent("");
+		comment.setContent(getCommentContent(start, end));
 
-		String commentContent = getCommentContent(start, end);
-
+		// set the position
 		int[] lineSeparatorPositions = declarationUnit.compilationResult.lineSeparatorPositions;
 		SourcePosition sourcePosition = factory.Core().createSourcePosition(spoonUnit, start, end - 1, lineSeparatorPositions);
-
-		// create the Spoon comment element
-		comment = parseTags(comment, commentContent);
 		comment.setPosition(sourcePosition);
 
 		insertCommentInAST(comment);
-	}
-
-	/**
-	 * Parse the content of a comment to extract the tags
-	 * @param comment the original comment
-	 * @param commentContent the content of the comment
-	 * @return a CtComment or a CtJavaDoc comment with a defined content
-	 */
-	private CtComment parseTags(CtComment comment, String commentContent) {
-		if (!(comment instanceof CtJavaDoc)) {
-			comment.setContent(commentContent);
-			return comment;
-		}
-
-		String currentTagContent = "";
-		CtJavaDocTag.TagType currentTag = null;
-
-		// TODO: remove the " *", see spoon.test.javadoc.JavaDocTest.testJavaDocReprint()
-		String[] lines = commentContent.split("\n");
-		for (int i = 0; i < lines.length; i++) {
-			String line = lines[i].trim();
-			if (line.startsWith(CtJavaDocTag.JAVADOC_TAG_PREFIX)) {
-				int endIndex = line.indexOf(" ");
-				if (endIndex == -1) {
-					endIndex = line.length();
-				}
-				defineCommentContent(comment, currentTagContent, currentTag);
-
-				currentTag = CtJavaDocTag.TagType.tagFromName(line.substring(1, endIndex).toLowerCase());
-				if (endIndex == line.length()) {
-					currentTagContent = "";
-				} else {
-					currentTagContent = line.substring(endIndex + 1);
-				}
-			} else {
-				currentTagContent += "\n" + lines[i];
-			}
-		}
-		defineCommentContent(comment, currentTagContent, currentTag);
-		return comment;
-	}
-
-	/**
-	 * Define the content of the comment
-	 * @param comment the comment
-	 * @param tagContent the tagContent of the tag
-	 * @param tagType the tag type
-	 */
-	private void defineCommentContent(CtComment comment, String tagContent, CtJavaDocTag.TagType tagType) {
-		if (tagType != null) {
-			CtJavaDocTag docTag = comment.getFactory().Code().createJavaDocTag(tagContent, tagType);
-			((CtJavaDoc) comment).addTag(docTag);
-		} else if (!tagContent.isEmpty()) {
-			comment.setContent(tagContent.trim());
-		}
 	}
 
 	/**
@@ -266,7 +193,7 @@ class JDTCommentBuilder {
 				spoonUnit.getDeclaredModule().addComment(comment);
 			} else {
 				comment.setCommentType(CtComment.CommentType.FILE);
-				addCommentToNear(comment, new ArrayList<CtElement>(spoonUnit.getDeclaredTypes()));
+				addCommentToNear(comment, new ArrayList<>(spoonUnit.getDeclaredTypes()));
 			}
 			return;
 		}
@@ -282,9 +209,17 @@ class JDTCommentBuilder {
 				// Do not visit the AST, only the first element
 				if (!isScanned) {
 					isScanned = true;
-					if (e.getPosition().getSourceStart() == comment.getPosition().getSourceStart()) {
+					SourcePosition sp = e.getPosition();
+					if (sp.getSourceStart() == comment.getPosition().getSourceStart()) {
 						e.addComment(comment);
 						return;
+					}
+					if (sp instanceof DeclarationSourcePosition) {
+						DeclarationSourcePosition dsp = (DeclarationSourcePosition) sp;
+						if (comment.getPosition().getSourceEnd() < dsp.getModifierSourceEnd()) {
+							e.addComment(comment);
+							return;
+						}
 					}
 					super.scan(e);
 				}
@@ -298,7 +233,7 @@ class JDTCommentBuilder {
 
 			@Override
 			public <R> void visitCtStatementList(CtStatementList e) {
-				addCommentToNear(comment, new ArrayList<CtElement>(e.getStatements()));
+				addCommentToNear(comment, new ArrayList<>(e.getStatements()));
 				try {
 					comment.getParent();
 				} catch (ParentNotInitializedException ex) {
@@ -355,8 +290,7 @@ class JDTCommentBuilder {
 				}
 			}
 
-			@Override
-			public <T> void visitCtInterface(CtInterface<T> e) {
+			private <T> void visitInterfaceType(CtType<T> e) {
 				final List<CtElement> elements = new ArrayList<>();
 				for (CtTypeMember typeMember : e.getTypeMembers()) {
 					if (typeMember instanceof CtField || typeMember instanceof CtMethod) {
@@ -373,6 +307,16 @@ class JDTCommentBuilder {
 			}
 
 			@Override
+			public <T> void visitCtInterface(CtInterface<T> e) {
+				visitInterfaceType(e);
+			}
+
+			@Override
+			public <A extends Annotation> void visitCtAnnotationType(CtAnnotationType<A> e) {
+				visitInterfaceType(e);
+			}
+
+			@Override
 			public <T> void scanCtVariable(CtVariable<T> e) {
 				e.addComment(comment);
 			}
@@ -381,8 +325,7 @@ class JDTCommentBuilder {
 			public <E> void visitCtSwitch(CtSwitch<E> e) {
 				List<CtCase<? super E>> cases = e.getCases();
 				CtCase previous = null;
-				for (int i = 0; i < cases.size(); i++) {
-					CtCase<? super E> ctCase = cases.get(i);
+				for (CtCase<? super E> ctCase : cases) {
 					if (previous == null) {
 						if (comment.getPosition().getSourceStart() < ctCase.getPosition().getSourceStart()
 								&& e.getPosition().getSourceStart() < comment.getPosition().getSourceStart()) {
@@ -392,7 +335,7 @@ class JDTCommentBuilder {
 					} else {
 						if (previous.getPosition().getSourceEnd() < comment.getPosition().getSourceStart()
 								&& ctCase.getPosition().getSourceStart() > comment.getPosition().getSourceStart()) {
-							addCommentToNear(comment, new ArrayList<CtElement>(previous.getStatements()));
+							addCommentToNear(comment, new ArrayList<>(previous.getStatements()));
 							try {
 								comment.getParent();
 							} catch (ParentNotInitializedException ex) {
@@ -404,7 +347,7 @@ class JDTCommentBuilder {
 					previous = ctCase;
 				}
 				if (previous.getPosition().getSourceEnd() < comment.getPosition().getSourceStart()) {
-					addCommentToNear(comment, new ArrayList<CtElement>(previous.getStatements()));
+					addCommentToNear(comment, new ArrayList<>(previous.getStatements()));
 					try {
 						comment.getParent();
 					} catch (ParentNotInitializedException ex) {
@@ -421,17 +364,29 @@ class JDTCommentBuilder {
 
 			@Override
 			public void visitCtIf(CtIf e) {
-				if (!(e.getThenStatement() instanceof CtBlock)) {
-					if (comment.getPosition().getSourceEnd() <= e.getThenStatement().getPosition().getSourceStart()) {
-						e.getThenStatement().addComment(comment);
-						return;
+				CtStatement thenStatement = e.getThenStatement();
+				if (thenStatement != null) {
+					if (!(thenStatement instanceof CtBlock)) {
+						if (comment.getPosition().getSourceEnd() <= thenStatement.getPosition().getSourceStart()) {
+							thenStatement.addComment(comment);
+							return;
+						}
 					}
 				}
-				if (e.getElseStatement() != null) {
-					SourcePosition thenPosition = e.getThenStatement().getPosition().isValidPosition() == false ? ((CtBlock) e.getThenStatement()).getStatement(0).getPosition() : e.getThenStatement().getPosition();
-					SourcePosition elsePosition = e.getElseStatement().getPosition().isValidPosition() == false ? ((CtBlock) e.getElseStatement()).getStatement(0).getPosition() : e.getElseStatement().getPosition();
+				CtStatement elseStatement = e.getElseStatement();
+				if (elseStatement != null && thenStatement != null) {
+					SourcePosition thenPosition = thenStatement.getPosition();
+					if (!thenPosition.isValidPosition() && thenStatement instanceof CtBlock) {
+						CtStatement thenExpression = ((CtBlock) thenStatement).getStatement(0);
+						thenPosition = thenExpression.getPosition();
+					}
+					SourcePosition elsePosition = elseStatement.getPosition();
+					if (!elsePosition.isValidPosition() && elseStatement instanceof CtBlock) {
+						CtStatement elseExpression = ((CtBlock) elseStatement).getStatement(0);
+						elsePosition = elseExpression.getPosition();
+					}
 					if (comment.getPosition().getSourceStart() > thenPosition.getSourceEnd() && comment.getPosition().getSourceEnd() < elsePosition.getSourceStart()) {
-						e.getElseStatement().addComment(comment);
+						elseStatement.addComment(comment);
 					}
 				}
 				try {
@@ -454,8 +409,22 @@ class JDTCommentBuilder {
 			}
 
 			@Override
+			public <T> void visitCtLambda(CtLambda<T> e) {
+				if (e.getExpression() != null) {
+					CtParameter<?> lastParameter = e.getParameters().get(e.getParameters().size() - 1);
+					if (comment.getPosition().getSourceStart() > lastParameter.getPosition().getSourceEnd()) {
+						e.getExpression().addComment(comment);
+					} else {
+						e.addComment(comment);
+					}
+				} else if (e.getBody() != null) {
+					e.addComment(comment);
+				}
+			}
+
+			@Override
 			public <T> void visitCtNewArray(CtNewArray<T> e) {
-				addCommentToNear(comment, new ArrayList<CtElement>(e.getElements()));
+				addCommentToNear(comment, new ArrayList<>(e.getElements()));
 				try {
 					comment.getParent();
 				} catch (ParentNotInitializedException ex) {
@@ -472,6 +441,8 @@ class JDTCommentBuilder {
 			public void visitCtCatch(CtCatch e) {
 				if (comment.getPosition().getLine() <= e.getPosition().getLine()) {
 					e.addComment(comment);
+				} else {
+					e.getBody().addComment(comment);
 				}
 			}
 
@@ -479,12 +450,22 @@ class JDTCommentBuilder {
 			public void visitCtModule(CtModule module) {
 				addCommentToNear(comment, new ArrayList<>(module.getModuleDirectives()));
 			}
+
+			@Override
+			public <A extends Annotation> void visitCtAnnotation(CtAnnotation<A> e) {
+				addCommentToNear(comment, new ArrayList<>(e.getValues().values()));
+			}
 		};
 		insertionVisitor.scan(commentParent);
-		try {
-			comment.getParent();
-		} catch (ParentNotInitializedException e) {
-			LOGGER.error(comment + " is not added into the AST", e);
+
+		// postcondition
+		// now we make sure that there is a parent
+		// if there is no parent
+		if (!comment.isParentInitialized()) {
+			// that's a serious error, there is something to debug
+			LOGGER.error("\"" + comment + "\" cannot be added into the AST, with parent " + commentParent.getClass()
+					+ " at " + commentParent.getPosition().toString()
+					+ ", please report the bug by posting on https://github.com/INRIA/spoon/issues/2482");
 		}
 	}
 
@@ -539,8 +520,8 @@ class JDTCommentBuilder {
 
 		if (!spoonUnit.getDeclaredTypes().isEmpty()) {
 			findCommentParentScanner.scan(spoonUnit.getDeclaredTypes());
-		} else if (spoonUnit.getDeclaredModule() != null) {
-			findCommentParentScanner.scan(spoonUnit.getDeclaredModule());
+		} else if (spoonUnit.getDeclaredModuleReference() != null) {
+			findCommentParentScanner.scan(spoonUnit.getDeclaredModuleReference().getDeclaration());
 		}
 
 		return findCommentParentScanner.commentParent;
@@ -564,10 +545,13 @@ class JDTCommentBuilder {
 	 * @return the content of the comment
 	 */
 	private String getCommentContent(int start, int end) {
-		return cleanComment(new CharArrayReader(contents, start, end - start));
+		return new String(contents, start, end - start);
 	}
 
 	public static String cleanComment(String comment) {
+		if (comment == null) {
+			return "";
+		}
 		return cleanComment(new StringReader(comment));
 	}
 
@@ -579,11 +563,12 @@ class JDTCommentBuilder {
 		StringBuilder ret = new StringBuilder();
 		try (BufferedReader br = new BufferedReader(comment)) {
 			String line = br.readLine();
-			if (line.length() < 2 || line.charAt(0) != '/') {
-				throw new SpoonException("Unexpected beginning of comment");
+			// nothing in the first line
+			if (line == null) {
+				return ret.toString();
 			}
 			boolean isLastLine = false;
-			if (line.charAt(1) == '/') {
+			if (line.length() >= 2 && line.charAt(1) == '/') {
 				//it is single line comment, which starts with "//"
 				isLastLine = true;
 				line = line.substring(2);

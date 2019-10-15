@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.processing;
 
 import org.junit.After;
@@ -47,7 +63,6 @@ public class CtGenerationTest {
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.getEnvironment().setCommentEnabled(true);
 		launcher.getEnvironment().useTabulations(true);
-		//launcher.getEnvironment().setAutoImports(true);
 		launcher.setSourceOutputDirectory("./target/generated/");
 		// interfaces.
 		launcher.addInputResource("./src/main/java/spoon/reflect/code");
@@ -66,7 +81,6 @@ public class CtGenerationTest {
 		}
 
 		launcher.addInputResource("./src/test/java/spoon/generating/replace/ReplacementVisitor.java");
-		//launcher.addInputResource("./src/test/java/spoon/generating/replace/");
 		launcher.addProcessor(new ReplacementVisitorGenerator());
 		launcher.setOutputFilter(new RegexFilter("spoon.support.visitor.replace.*"));
 		launcher.run();
@@ -74,15 +88,11 @@ public class CtGenerationTest {
 		// cp ./target/generated/spoon/support/visitor/replace/ReplacementVisitor.java ./src/main/java/spoon/support/visitor/replace/ReplacementVisitor.java
 		CtClass<Object> actual = build(new File(launcher.getModelBuilder().getSourceOutputDirectory() + "/spoon/support/visitor/replace/ReplacementVisitor.java")).Class().get("spoon.support.visitor.replace.ReplacementVisitor");
 		CtClass<Object> expected = build(new File("./src/main/java/spoon/support/visitor/replace/ReplacementVisitor.java")).Class().get("spoon.support.visitor.replace.ReplacementVisitor");
-		try {
-			assertThat(actual).isEqualTo(expected);
-		} catch (AssertionError e) {
-			throw new ComparisonFailure("ReplacementVisitor different", expected.toString(), actual.toString());
-		}
+		assertThat(actual).isEqualTo(expected);
 	}
 
 	@Test
-	public void testGenerateCtBiScanner() throws Exception {
+	public void testGenerateCtBiScanner() {
 		// contract: generates the biscanner that is used for equality checking
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
@@ -111,13 +121,12 @@ public class CtGenerationTest {
 	}
 
 	@Test
-	public void testGenerateCloneVisitor() throws Exception {
+	public void testGenerateCloneVisitor() {
 		// contract: generates CloneBuilder.java and CloneBuilder.java
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.getEnvironment().setCommentEnabled(true);
 		launcher.getEnvironment().useTabulations(true);
-		//launcher.getEnvironment().setAutoImports(true);
 		launcher.setSourceOutputDirectory("./target/generated/");
 		// interfaces.
 		launcher.addInputResource("./src/main/java/spoon/reflect/code");
@@ -140,33 +149,22 @@ public class CtGenerationTest {
 		// cp ./target/generated/spoon/support/visitor/clone/CloneBuilder.java  ./src/main/java/spoon/support/visitor/clone/CloneBuilder.java
 		CtClass<Object> actual = build(new File(launcher.getModelBuilder().getSourceOutputDirectory() + "/spoon/support/visitor/clone/CloneBuilder.java")).Class().get("spoon.support.visitor.clone.CloneBuilder");
 		CtClass<Object> expected = build(new File("./src/main/java/spoon/support/visitor/clone/CloneBuilder.java")).Class().get("spoon.support.visitor.clone.CloneBuilder");
-		try {
-			assertThat(actual)
-					.isEqualTo(expected);
-		} catch (AssertionError e) {
-			throw new ComparisonFailure("CloneBuilder different", expected.toString(), actual.toString());
-		}
+		assertThat(actual).isEqualTo(expected);
 
 		// cp ./target/generated/spoon/support/visitor/clone/CloneVisitor.java  ./src/main/java/spoon/support/visitor/clone/CloneVisitor.java
 		actual = build(new File(launcher.getModelBuilder().getSourceOutputDirectory() + "/spoon/support/visitor/clone/CloneVisitor.java")).Class().get("spoon.support.visitor.clone.CloneVisitor");
 		expected = build(new File("./src/main/java/spoon/support/visitor/clone/CloneVisitor.java")).Class().get("spoon.support.visitor.clone.CloneVisitor");
-		try {
-			assertThat(actual)
-					.isEqualTo(expected);
-		} catch (AssertionError e) {
-			throw new ComparisonFailure("CloneVisitor different", expected.toString(), actual.toString());
-		}
+		assertThat(actual).isEqualTo(expected);
 	}
 
 	@Test
-	public void testGenerateRoleHandler() throws Exception {
+	public void testGenerateRoleHandler() {
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setAutoImports(true);
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.getEnvironment().setCommentEnabled(true);
 		launcher.getEnvironment().setCopyResources(false);
 		launcher.getEnvironment().useTabulations(true);
-		//launcher.getEnvironment().setAutoImports(true);
 		launcher.setSourceOutputDirectory("./target/generated/");
 		// Spoon model interfaces
 		launcher.addInputResource("./src/main/java/spoon/reflect/code");
@@ -192,11 +190,7 @@ public class CtGenerationTest {
 		// cp ./target/generated/spoon/reflect/meta/impl/ModelRoleHandlers.java ./src/main/java/spoon/reflect/meta/impl/ModelRoleHandlers.java
 		CtClass<Object> actual = build(new File(launcher.getModelBuilder().getSourceOutputDirectory() + "/spoon/reflect/meta/impl/ModelRoleHandlers.java")).Class().get("spoon.reflect.meta.impl.ModelRoleHandlers");
 		CtClass<Object> expected = build(new File("./src/main/java/spoon/reflect/meta/impl/ModelRoleHandlers.java")).Class().get("spoon.reflect.meta.impl.ModelRoleHandlers");
-		try {
-			assertThat(actual).isEqualTo(expected);
-		} catch (AssertionError e) {
-			throw new ComparisonFailure("ModelRoleHandlers different", expected.toString(), actual.toString());
-		}
+		assertThat(actual).isEqualTo(expected);
 	}
 
 	private class RegexFilter implements Filter<CtType<?>> {

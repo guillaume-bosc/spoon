@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.factory;
 
@@ -92,6 +81,7 @@ import spoon.reflect.declaration.CtPackageExport;
 import spoon.reflect.declaration.CtProvidedService;
 import spoon.reflect.declaration.CtModuleRequirement;
 import spoon.reflect.declaration.CtPackage;
+import spoon.reflect.declaration.CtPackageDeclaration;
 import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeParameter;
@@ -115,6 +105,7 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtUnboundVariableReference;
 import spoon.reflect.reference.CtVariableReference;
 import spoon.reflect.reference.CtWildcardReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
 import spoon.reflect.visitor.chain.CtQuery;
 import spoon.support.visitor.GenericTypeAdapter;
 
@@ -257,9 +248,12 @@ public interface Factory {
 	<T> CtNewArray<T[]> createLiteralArray(T[] value);
 
 	/**
-	 *  @see CodeFactory#createNewClass(CtTypeReference, CtClass,CtExpression[])
+	 * Creates an anonymous class
+	 *
+	 * @param superClass Anonymous class in the new class.
+	 * @param parameters the arguments of the constructor call.
 	 */
-	<T> CtNewClass<T> createNewClass(CtTypeReference<T> type, CtClass<?> anonymousClass, CtExpression<?>... parameters);
+	CtNewClass<?> createNewClass(CtType<?> superClass, CtExpression<?>... parameters);
 
 	/**
 	 *  @see CodeFactory#createVariableAssignments(List,List)
@@ -964,9 +958,14 @@ public interface Factory {
 	CtImport createImport(CtReference reference);
 
 	/**
-	 * @see TypeFactory#createWildcardStaticTypeMemberReference(CtTypeReference)
+	 * @see TypeFactory#createUnresolvedImport(String,boolean)
 	 */
-	CtTypeReference createWildcardStaticTypeMemberReference(CtTypeReference typeReference);
+	CtImport createUnresolvedImport(String reference, boolean isStatic);
+
+	/**
+	 * @see TypeFactory#createTypeMemberWildcardImportReference(CtTypeReference)
+	 */
+	CtTypeMemberWildcardImportReference createTypeMemberWildcardImportReference(CtTypeReference<?> typeReference);
 
 	/**
 	 * @see ModuleFactory#createPackageExport(CtPackageReference)
@@ -1002,4 +1001,14 @@ public interface Factory {
 	 * @see CoreFactory#createPartialSourcePosition(CompilationUnit)
 	 */
 	SourcePosition createPartialSourcePosition(CompilationUnit compilationUnit);
+
+	/**
+	 * @see PackageFactory#createPackageDeclaration(CtPackageReference)
+	 */
+	CtPackageDeclaration createPackageDeclaration(CtPackageReference packageRef);
+
+	/**
+	 * @see TypeFactory#createReference(String)
+	 */
+	<T> CtTypeReference<T> createReference(String qualifiedName);
 }

@@ -1,22 +1,12 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor;
 
 import spoon.compiler.Environment;
+import spoon.experimental.CtUnresolvedImport;
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtFor;
@@ -24,8 +14,8 @@ import spoon.reflect.code.CtForEach;
 import spoon.reflect.code.CtIf;
 import spoon.reflect.code.CtStatement;
 import spoon.reflect.code.CtTypeAccess;
-import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.CtAnnotation;
+import spoon.reflect.declaration.CtCompilationUnit;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtExecutable;
@@ -45,6 +35,7 @@ import spoon.reflect.declaration.CtImport;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
 import spoon.reflect.visitor.printer.CommentOffset;
 import spoon.reflect.visitor.PrintingContext.Writable;
 
@@ -131,7 +122,7 @@ public class ElementPrinterHelper {
 		}
 	}
 
-	public void visitCtNamedElement(CtNamedElement namedElement, CompilationUnit sourceCompilationUnit) {
+	public void visitCtNamedElement(CtNamedElement namedElement, CtCompilationUnit sourceCompilationUnit) {
 		writeAnnotations(namedElement);
 		if (env.isPreserveLineNumbers()) {
 			getPrinterHelper().adjustStartPosition(namedElement);
@@ -173,7 +164,7 @@ public class ElementPrinterHelper {
 	 * Writes a statement.
 	 */
 	public void writeStatement(CtStatement statement) {
-		try (Writable _context = prettyPrinter.context.modify().setStatement(statement)) {
+		try (Writable _context = prettyPrinter.getContext().modify().setStatement(statement)) {
 			prettyPrinter.scan(statement);
 		}
 	}
@@ -255,7 +246,7 @@ public class ElementPrinterHelper {
 			printList(arguments.stream().filter(a -> !a.isImplicit())::iterator,
 				null, false, "<", false, false, ",", true, false, ">",
 				argument -> {
-					if (prettyPrinter.context.forceWildcardGenerics()) {
+					if (prettyPrinter.getContext().forceWildcardGenerics()) {
 						printer.writeSeparator("?");
 					} else {
 						prettyPrinter.scan(argument);
@@ -304,10 +295,22 @@ public class ElementPrinterHelper {
 					break;
 
 				case ALL_STATIC_MEMBERS:
-					CtTypeReference typeStarRef = (CtTypeReference) ctImport.getReference();
-					importTypeStr = typeStarRef.getQualifiedName();
+					CtTypeMemberWildcardImportReference typeStarRef = (CtTypeMemberWildcardImportReference) ctImport.getReference();
+					importTypeStr = typeStarRef.getTypeReference().getQualifiedName();
 					if (!isJavaLangClasses(importTypeStr)) {
-						setStaticImports.add(this.removeInnerTypeSeparator(importTypeStr));
+						setStaticImports.add(this.removeInnerTypeSeparator(importTypeStr) + ".*");
+					}
+					break;
+
+				case UNRESOLVED:
+					CtUnresolvedImport unresolvedImport = (CtUnresolvedImport) ctImport;
+					importTypeStr = unresolvedImport.getUnresolvedReference();
+					if (!isJavaLangClasses(importTypeStr)) {
+						if (unresolvedImport.isStatic()) {
+							setStaticImports.add(importTypeStr);
+						} else {
+							setImports.add(importTypeStr);
+						}
 					}
 					break;
 			}

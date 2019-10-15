@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.template;
 
@@ -138,7 +127,6 @@ public abstract class Parameters {
 	 */
 	@SuppressWarnings("null")
 	public static void setValue(Template<?> template, String parameterName, Integer index, Object value) {
-		Object tparamValue = null;
 		try {
 			Field rtField = null;
 			for (Field f : RtHelper.getAllFields(template.getClass())) {
@@ -163,9 +151,7 @@ public abstract class Parameters {
 			rtField.setAccessible(true);
 			rtField.set(template, value);
 			if (rtField.getType().isArray()) {
-				// TODO: RP: THIS IS WRONG!!!! tparamValue is never used or
-				// set!!
-				tparamValue = ((Object[]) tparamValue)[index];
+				// TODO: RP: THIS IS WRONG!!!! tparamValue is never used or set!
 			}
 		} catch (Exception e) {
 			throw new UndefinedParameterException();
@@ -175,7 +161,7 @@ public abstract class Parameters {
 	private static String getParameterName(Field f) {
 		String name = f.getName();
 		Parameter p = f.getAnnotation(Parameter.class);
-		if ((p != null) && !p.value().equals("")) {
+		if ((p != null) && !p.value().isEmpty()) {
 			name = p.value();
 		}
 		return name;
@@ -184,7 +170,7 @@ public abstract class Parameters {
 	private static String getParameterName(CtFieldReference<?> f) {
 		String name = f.getSimpleName();
 		Parameter p = f.getDeclaration().getAnnotation(Parameter.class);
-		if ((p != null) && !p.value().equals("")) {
+		if ((p != null) && !p.value().isEmpty()) {
 			name = p.value();
 		}
 		return name;
@@ -238,7 +224,7 @@ public abstract class Parameters {
 	 * 		the template that holds the parameter values
 	 */
 	public static Map<String, Object> getTemplateParametersAsMap(Factory f, CtType<?> targetType, Template<?> template) {
-		Map<String, Object> params = new HashMap<>(Parameters.getNamesToValues(template, (CtClass) f.Class().get(template.getClass())));
+		Map<String, Object> params = new HashMap<>(getNamesToValues(template, (CtClass) f.Class().get(template.getClass())));
 		//detect reference to to be generated type
 		CtTypeReference<?> targetTypeRef = targetType == null ? null : targetType.getReference();
 		if (targetType == null) {
@@ -283,15 +269,12 @@ public abstract class Parameters {
 			//the template fields, which are using generic type like <T>, are not template parameters
 			return false;
 		}
-		if (ref.getSimpleName().equals("this")) {
+		if ("this".equals(ref.getSimpleName())) {
 			//the reference to this is not template parameter
 			return false;
 		}
-		if (ref.getType().isSubtypeOf(getTemplateParameterType(ref.getFactory()))) {
-			//the type of template field is TemplateParameter.
-			return true;
-		}
-		return false;
+		//the type of template field is TemplateParameter.
+		return ref.getType().isSubtypeOf(getTemplateParameterType(ref.getFactory()));
 	}
 
 	/**
@@ -320,12 +303,14 @@ public abstract class Parameters {
 	public static <T> TemplateParameter<T> NIL(Class<? extends T> type) {
 		if (Number.class.isAssignableFrom(type)) {
 			return (TemplateParameter<T>) new TemplateParameter<Number>() {
+				@Override
 				public Number S() {
 					return 0;
 				}
 			};
 		}
 		return new TemplateParameter<T>() {
+			@Override
 			public T S() {
 				return null;
 			}

@@ -1,8 +1,25 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.literal;
 
 import org.junit.Test;
 import spoon.Launcher;
 import spoon.reflect.code.CtLiteral;
+import spoon.reflect.code.LiteralBase;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.CodeFactory;
@@ -16,13 +33,15 @@ import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static spoon.testing.utils.ModelUtils.buildClass;
 import static spoon.testing.utils.ModelUtils.canBeBuilt;
 
 public class LiteralTest {
+
 	@Test
-	public void testCharLiteralInNoClasspath() throws Exception {
+	public void testCharLiteralInNoClasspath() {
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/SecondaryIndexManager.java");
 		launcher.setSourceOutputDirectory("./target/literal");
@@ -30,7 +49,7 @@ public class LiteralTest {
 		launcher.run();
 
 		final CtClass<Object> aClass = launcher.getFactory().Class().get("org.apache.cassandra.index.SecondaryIndexManager");
-		TreeSet<CtLiteral<?>> ts = new TreeSet<CtLiteral<?>>(new DeepRepresentationComparator());
+		TreeSet<CtLiteral<?>> ts = new TreeSet<>(new DeepRepresentationComparator());
 
 		ts.addAll(aClass.getElements(new TypeFilter<CtLiteral<Character>>(CtLiteral.class) {
 			@Override
@@ -76,7 +95,7 @@ public class LiteralTest {
 
 
 		literal = (CtLiteral<?>) ctType.getField("d").getDefaultExpression();
-		assertEquals(0l, literal.getValue());
+		assertEquals(0L, literal.getValue());
 		assertTrue(literal.getType().isPrimitive());
 		assertEquals(typeFactory.LONG_PRIMITIVE, literal.getType());
 
@@ -99,7 +118,7 @@ public class LiteralTest {
 		assertEquals(typeFactory.STRING, literal.getType());
 
 		literal = (CtLiteral<?>) ctType.getField("h").getDefaultExpression();
-		assertEquals(null, literal.getValue());
+		assertNull(literal.getValue());
 		assertFalse(literal.getType().isPrimitive());
 		assertEquals(typeFactory.NULL_TYPE, literal.getType());
 
@@ -129,7 +148,7 @@ public class LiteralTest {
 	}
 
 	@Test
-	public void testEscapedString() throws Exception {
+	public void testEscapedString() {
 
 		/* test escaped char: spoon change octal values by equivalent unicode values */
 
@@ -161,5 +180,93 @@ public class LiteralTest {
 		assertTrue('\u0000' == (char) ((CtLiteral) ctClass.getField("c7").getDefaultExpression()).getValue());
 		assertTrue('\u0001' == (char) ((CtLiteral) ctClass.getField("c8").getDefaultExpression()).getValue());
 		assertTrue('\u0002' == (char) ((CtLiteral) ctClass.getField("c9").getDefaultExpression()).getValue());
+	}
+
+	@Test
+	public void testLiteralBase() {
+		// contract: CtLiteral should provide correct base (2, 8, 10, 16 or empty)
+		Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/java/spoon/test/literal/testclasses/BasedLiteral.java");
+		launcher.buildModel();
+		final CtClass<?> ctClass = launcher.getFactory().Class().get("spoon.test.literal.testclasses.BasedLiteral");
+
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("i1").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("i2").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.OCTAL, ((CtLiteral) ctClass.getField("i3").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.OCTAL, ((CtLiteral) ctClass.getField("i4").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("i5").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("i6").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.OCTAL, ((CtLiteral) ctClass.getField("i7").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.BINARY, ((CtLiteral) ctClass.getField("i8").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.BINARY, ((CtLiteral) ctClass.getField("i9").getDefaultExpression()).getBase());
+
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("l1").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("l2").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.OCTAL, ((CtLiteral) ctClass.getField("l3").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.OCTAL, ((CtLiteral) ctClass.getField("l4").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("l5").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("l6").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.BINARY, ((CtLiteral) ctClass.getField("l7").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.BINARY, ((CtLiteral) ctClass.getField("l8").getDefaultExpression()).getBase());
+
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("f1").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("f2").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("f3").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("f4").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("f5").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("f6").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.HEXADECIMAL, ((CtLiteral) ctClass.getField("f7").getDefaultExpression()).getBase());
+
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("d1").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("d2").getDefaultExpression()).getBase());
+		assertEquals(LiteralBase.DECIMAL, ((CtLiteral) ctClass.getField("d3").getDefaultExpression()).getBase());
+
+		assertNull(((CtLiteral) ctClass.getField("c1").getDefaultExpression()).getBase());
+		assertNull(((CtLiteral) ctClass.getField("s1").getDefaultExpression()).getBase());
+    }
+
+	@Test
+	public void testLiteralBasePrinter() {
+		// contract: PrettyPrinter should output literals in the specified base
+		Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/java/spoon/test/literal/testclasses/BasedLiteral.java");
+		launcher.buildModel();
+		final CtClass<?> ctClass = launcher.getFactory().Class().get("spoon.test.literal.testclasses.BasedLiteral");
+
+		assertEquals("42", ctClass.getField("i1").getDefaultExpression().toString());
+		((CtLiteral) ctClass.getField("i1").getDefaultExpression()).setBase(LiteralBase.OCTAL);
+		assertEquals("052", ctClass.getField("i1").getDefaultExpression().toString());
+		assertEquals("0", ctClass.getField("i2").getDefaultExpression().toString());
+		assertEquals("00", ctClass.getField("i3").getDefaultExpression().toString());
+		assertEquals("042", ctClass.getField("i4").getDefaultExpression().toString());
+		assertEquals("0x42", ctClass.getField("i5").getDefaultExpression().toString());
+		assertEquals("0x42", ctClass.getField("i6").getDefaultExpression().toString());
+		assertEquals("0142", ctClass.getField("i7").getDefaultExpression().toString());
+		assertEquals("0b1", ctClass.getField("i8").getDefaultExpression().toString());
+		assertEquals("0b1010", ctClass.getField("i9").getDefaultExpression().toString());
+
+		assertEquals("42L", ctClass.getField("l1").getDefaultExpression().toString());
+		assertEquals("0L", ctClass.getField("l2").getDefaultExpression().toString());
+		assertEquals("00L", ctClass.getField("l3").getDefaultExpression().toString());
+		assertEquals("042L", ctClass.getField("l4").getDefaultExpression().toString());
+		assertEquals("0x42L", ctClass.getField("l5").getDefaultExpression().toString());
+		assertEquals("0x42L", ctClass.getField("l6").getDefaultExpression().toString());
+		assertEquals("0b0L", ctClass.getField("l7").getDefaultExpression().toString());
+		assertEquals("0b1010L", ctClass.getField("l8").getDefaultExpression().toString());
+
+		assertEquals("42.42F", ctClass.getField("f1").getDefaultExpression().toString());
+		assertEquals("42.0F", ctClass.getField("f2").getDefaultExpression().toString());
+		assertEquals("0.0F", ctClass.getField("f3").getDefaultExpression().toString());
+		assertEquals("0.0F", ctClass.getField("f4").getDefaultExpression().toString());
+		assertEquals("0.0F", ctClass.getField("f5").getDefaultExpression().toString());
+		assertEquals("0x1.2p7F", ctClass.getField("f6").getDefaultExpression().toString());
+		assertEquals("0x1.2p7F", ctClass.getField("f7").getDefaultExpression().toString());
+
+		assertEquals("0.0", ctClass.getField("d1").getDefaultExpression().toString());
+		assertEquals("0.0", ctClass.getField("d2").getDefaultExpression().toString());
+		assertEquals("42.0", ctClass.getField("d3").getDefaultExpression().toString());
+
+		assertEquals("'c'", ctClass.getField("c1").getDefaultExpression().toString());
+		assertEquals("\"hello\"", ctClass.getField("s1").getDefaultExpression().toString());
 	}
 }

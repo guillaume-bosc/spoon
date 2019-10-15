@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.pattern.internal.node;
 
@@ -48,13 +37,18 @@ public class ForEachNode extends AbstractRepeatableMatcher implements InlineNode
 	private ParameterInfo localParameter;
 
 	public ForEachNode() {
-		super();
 	}
 
 	@Override
 	public boolean replaceNode(RootNode oldNode, RootNode newNode) {
 		if (iterableParameter == oldNode) {
-			oldNode = newNode;
+			//before defined iterable parameter has to be replaced by another iterable parameter
+			//Maybe it makes no sense, because
+			//1) the iterable parameter has to be defined first
+			//2) then ForEachNode can be created for that
+			//3) then this method might be called to replace iterable parameter again
+			//... but does that use case makes sense? Probably not.
+			iterableParameter = (PrimitiveMatcher) newNode;
 			return true;
 		}
 		if (iterableParameter.replaceNode(oldNode, newNode)) {
@@ -64,10 +58,7 @@ public class ForEachNode extends AbstractRepeatableMatcher implements InlineNode
 			nestedModel = newNode;
 			return true;
 		}
-		if (nestedModel.replaceNode(oldNode, newNode)) {
-			return true;
-		}
-		return false;
+		return nestedModel.replaceNode(oldNode, newNode);
 	}
 
 	@Override
@@ -86,7 +77,7 @@ public class ForEachNode extends AbstractRepeatableMatcher implements InlineNode
 	public TobeMatched matchAllWith(TobeMatched tobeMatched) {
 		TobeMatched  localMatch = nestedModel.matchAllWith(tobeMatched.copyAndSetParams(tobeMatched.getParameters().checkpoint()));
 		if (localMatch == null) {
-			//nested model did not matched.
+			//nested model did not match.
 			return null;
 		}
 		//it matched.

@@ -1,9 +1,33 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.parent;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import spoon.SpoonException;
+import spoon.reflect.code.BinaryOperatorKind;
+import spoon.reflect.code.CtCodeSnippetExpression;
+import spoon.reflect.code.CtComment;
+import spoon.reflect.code.CtExpression;
+import spoon.reflect.code.CtJavaDocTag;
+import spoon.reflect.cu.CompilationUnit;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.ModifierKind;
 import spoon.support.modelobs.ActionBasedChangeListenerImpl;
 import spoon.support.modelobs.action.Action;
 import spoon.reflect.declaration.CtElement;
@@ -14,6 +38,7 @@ import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtVisitable;
+import spoon.support.DerivedProperty;
 import spoon.support.UnsettableProperty;
 import spoon.test.SpoonTestHelpers;
 
@@ -40,11 +65,11 @@ public class ContractOnSettersParametrizedTest<T extends CtVisitable> {
 	private static final List<CtType<? extends CtElement>> allInstantiableMetamodelInterfaces = SpoonTestHelpers.getAllInstantiableMetamodelInterfaces();
 
 	@Parameterized.Parameters(name = "{0}")
-	public static Collection<Object[]> data() throws Exception {
+	public static Collection<Object[]> data() {
 		return createReceiverList();
 	}
 
-	public static Collection<Object[]> createReceiverList() throws Exception {
+	public static Collection<Object[]> createReceiverList() {
 		List<Object[]> values = new ArrayList<>();
 		for (CtType t : allInstantiableMetamodelInterfaces) {
 			if (!(CtReference.class.isAssignableFrom(t.getActualClass()))) {
@@ -72,6 +97,28 @@ public class ContractOnSettersParametrizedTest<T extends CtVisitable> {
 
 	public static Object createCompatibleObject(CtTypeReference<?> parameterType) {
 		Class<?> c = parameterType.getActualClass();
+		Factory f = parameterType.getFactory();
+
+		// all Class objects
+		if (Class.class.isAssignableFrom(c) && parameterType.getActualTypeArguments().size() == 0) {
+			return Object.class;
+		}
+		if (Class.class.isAssignableFrom(c)  && parameterType.getActualTypeArguments().get(0).toString().equals("?")) {
+			return Object.class;
+		}
+		if (Class.class.isAssignableFrom(c)  && parameterType.getActualTypeArguments().get(0).toString().equals("? extends java.lang.Throwable")) {
+			return Exception.class;
+		}
+		if (Class.class.isAssignableFrom(c)  && parameterType.getActualTypeArguments().get(0).toString().equals("? extends spoon.reflect.declaration.CtElement")) {
+			return CtCodeSnippetExpression.class;
+		}
+
+		// metamodel elements
+		if (parameterType.toString().equals("spoon.reflect.declaration.CtType<?>")) {
+			CtClass fooBar = f.createClass("FooBar");
+			fooBar.delete();// removing from default package
+			return fooBar; // createNewClass implictly needs a CtClass
+		}
 		for(CtType t : allInstantiableMetamodelInterfaces) {
 			if (c.isAssignableFrom(t.getActualClass())) {
 				CtElement argument = factory.Core().create(t.getActualClass());
@@ -80,10 +127,34 @@ public class ContractOnSettersParametrizedTest<T extends CtVisitable> {
 				if (argument instanceof CtPackage) {
 					((CtPackage) argument).setSimpleName(argument.getShortRepresentation());
 				}
+
 				return argument;
 
 			}
 		}
+
+		// enums
+		if (BinaryOperatorKind.class.isAssignableFrom(c)) {
+			return BinaryOperatorKind.AND;
+		}
+		if (ModifierKind.class.isAssignableFrom(c)) {
+			return ModifierKind.PUBLIC;
+		}
+		if (CtComment.CommentType.class.isAssignableFrom(c)) {
+			return CtComment.CommentType.INLINE;
+		}
+		if (CtJavaDocTag.TagType.class.isAssignableFrom(c)) {
+			return CtJavaDocTag.TagType.SEE;
+		}
+
+		// misc
+		if (ModifierKind[].class.isAssignableFrom(c)) {
+			return new ModifierKind[] {ModifierKind.PUBLIC};
+		}
+		if (CompilationUnit.class.isAssignableFrom(c)) {
+			return parameterType.getFactory().createCompilationUnit();
+		}
+
 		if (Set.class.isAssignableFrom(c)) {
 			// we create one set with one element
 			HashSet<Object> objects = new HashSet<>();
@@ -96,6 +167,32 @@ public class ContractOnSettersParametrizedTest<T extends CtVisitable> {
 			objects.add(createCompatibleObject(parameterType.getActualTypeArguments().get(0)));
 			return objects;
 		}
+		if (String.class.isAssignableFrom(c)) {
+			return "42";
+		}
+		if (int.class.isAssignableFrom(c)) {
+			return 42;
+		}
+		if (boolean.class.isAssignableFrom(c)) {
+			return true;
+		}
+
+		// arrays
+		if (int[].class.isAssignableFrom(c)) {
+			return new int[] {42};
+		}
+		if (CtExpression[].class.isAssignableFrom(c)) {
+			return new CtExpression[0];
+		}
+		if (Object[].class.isAssignableFrom(c)) {
+			return new Object[] {42};
+		}
+
+		// others
+		if (java.lang.Package.class.isAssignableFrom(c)) {
+			return Package.getPackages()[0];
+		}
+
 		throw new IllegalArgumentException("cannot instantiate "+parameterType);
 	}
 	static int nTotalSetterCalls= 0;
@@ -137,17 +234,19 @@ public class ContractOnSettersParametrizedTest<T extends CtVisitable> {
 				// we check that setParent has been called
 
 				// directly the element
-				if (CtElement.class.isInstance(argument)
-				  && setter.getAnnotation(UnsettableProperty.class) == null) {
+				if (argument instanceof CtElement
+				  && setter.getAnnotation(UnsettableProperty.class) == null
+				  && setter.getAnnotation(DerivedProperty.class) == null) {
 					nAssertsOnParent++;
-					assertTrue(((CtElement)argument).hasParent(receiver));
+					assertTrue(setter.getDeclaringType().getQualifiedName() + "#" + setter.getSignature() + " doesn't initializes parent", ((CtElement)argument).hasParent(receiver));
 				}
 
 				// the element is in a list
-				if (Collection.class.isInstance(argument)
-						&& setter.getAnnotation(UnsettableProperty.class) == null) {
+				if (argument instanceof Collection
+						&& setter.getAnnotation(UnsettableProperty.class) == null
+						&& setter.getAnnotation(DerivedProperty.class) == null) {
 					nAssertsOnParentInList++;
-					assertTrue(((CtElement)((Collection)argument).iterator().next()).hasParent(receiver));
+					assertTrue(setter.getDeclaringType().getQualifiedName() + "#" + setter.getSignature() + " doesn't initializes parent", ((CtElement)((Collection)argument).iterator().next()).hasParent(receiver));
 				}
 
 

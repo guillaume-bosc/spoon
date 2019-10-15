@@ -1,21 +1,11 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor;
 
+import spoon.experimental.CtUnresolvedImport;
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtFieldAccess;
@@ -45,7 +35,7 @@ import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.support.SpoonClassNotFoundException;
-import spoon.support.reflect.reference.CtWildcardStaticTypeMemberReferenceImpl;
+import spoon.support.reflect.reference.CtTypeMemberWildcardImportReferenceImpl;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
@@ -59,6 +49,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A scanner that calculates the imports for a given model.
@@ -153,20 +145,70 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 		stringBuilder.append(ctJavaDoc.getContent());
 
 		for (CtJavaDocTag ctJavaDocTag : ctJavaDoc.getTags()) {
-			stringBuilder.append(ctJavaDocTag.getContent());
+			stringBuilder.append("\n").append(ctJavaDocTag.getType()).append(" ").append(ctJavaDocTag.getContent());
 		}
 
 		String javadoc = stringBuilder.toString();
 		for (CtImport ctImport : this.usedImport.keySet()) {
 			switch (ctImport.getImportKind()) {
 				case TYPE:
-					if (javadoc.contains(ctImport.getReference().getSimpleName())) {
-						this.setImportUsed(ctImport);
+					if (javadoc.contains(ctImport.getReference().getSimpleName()) && ctImport.getReference() instanceof CtTypeReference) {
+						//assure that it is not just any occurrence of same substring, but it is real javadoc link to the same type
+						if (matchesTypeName(javadoc, (CtTypeReference<?>) ctImport.getReference())) {
+							this.setImportUsed(ctImport);
+						}
 					}
 					break;
 			}
 		}
+	}
 
+	private static Set<String> mainTags = new HashSet<>(Arrays.asList("see", "throws", "exception"));
+	private static Set<String> inlineTags = new HashSet<>(Arrays.asList("link", "linkplain", "value"));
+	private static Pattern tagRE = Pattern.compile("(\\{)?@(\\w+)\\s+([\\w\\.\\$]+)(?:#(\\w+)(?:\\(([^\\)]*)\\)))?");
+
+	private boolean matchesTypeName(String javadoc, CtTypeReference<?> typeRef) {
+		Matcher m = tagRE.matcher(javadoc);
+		while (m.find()) {
+			String bracket = m.group(1);
+			String tag = m.group(2);
+			if ("{".equals(bracket)) {
+				if (inlineTags.contains(tag) == false) {
+					continue;
+				}
+			} else {
+				if (mainTags.contains(tag) == false) {
+					continue;
+				}
+			}
+			String type = m.group(3);
+			String params = m.group(5);
+
+			if (isTypeMatching(type, typeRef)) {
+				return true;
+			}
+			if (params != null) {
+				String[] paramTypes = params.split("\\s*,\\s*");
+				for (String paramType : paramTypes) {
+					if (isTypeMatching(paramType, typeRef)) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean isTypeMatching(String typeName, CtTypeReference<?> typeRef) {
+		if (typeName != null) {
+			if (typeName.equals(typeRef.getQualifiedName())) {
+				return true;
+			}
+			if (typeName.equals(typeRef.getSimpleName())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
@@ -278,9 +320,9 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 	}
 
 	@Override
-	public void initWithImports(Set<CtImport> importCollection) {
+	public void initWithImports(Iterable<CtImport> importCollection) {
 		for (CtImport ctImport : importCollection) {
-			this.usedImport.put(ctImport, Boolean.FALSE);
+			this.usedImport.put(ctImport, (ctImport instanceof CtUnresolvedImport) ? Boolean.TRUE : Boolean.FALSE);
 		}
 	}
 
@@ -361,7 +403,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 								if (declaringType != null) {
 									if (declaringType.getPackage() != null && !declaringType.getPackage().isUnnamedPackage()) {
 										// ignore java.lang package
-										if (!declaringType.getPackage().getSimpleName().equals("java.lang")) {
+										if (!"java.lang".equals(declaringType.getPackage().getSimpleName())) {
 											// ignore type in same package
 											if (declaringType.getPackage().getSimpleName()
 													.equals(pack.getSimpleName())) {
@@ -371,6 +413,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 										}
 									}
 								}
+								return false;
 							}
 						}
 					}
@@ -380,7 +423,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 			CtPackageReference pack = targetType.getPackage();
 			if (pack != null && ref.getPackage() != null && !ref.getPackage().isUnnamedPackage()) {
 				// ignore java.lang package
-				if (ref.getPackage().getSimpleName().equals("java.lang")) {
+				if ("java.lang".equals(ref.getPackage().getSimpleName())) {
 					return false;
 				} else {
 					// ignore type in same package
@@ -392,8 +435,12 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 			}
 		}
 
-		classImports.put(ref.getSimpleName(), ref);
-		return true;
+		if (!isAlreadyInUsedImport(ref)) {
+			classImports.put(ref.getSimpleName(), ref);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	private boolean setImportUsed(CtImport ctImport) {
@@ -405,7 +452,9 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 		String refQualifiedName = "";
 		CtTypeReference refDeclaringType = null;
 
-		boolean isTypeRef = false, isExecRef = false, isFieldRef = false;
+		boolean isTypeRef = false;
+		boolean isExecRef = false;
+		boolean isFieldRef = false;
 
 		if (ref instanceof CtTypeReference) {
 			refQualifiedName = ((CtTypeReference) ref).getQualifiedName();
@@ -444,16 +493,13 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 				case ALL_STATIC_MEMBERS:
 					if ((isExecRef || isFieldRef) && refDeclaringType != null) {
 						String qualifiedName = refDeclaringType.getQualifiedName();
-						CtWildcardStaticTypeMemberReferenceImpl importRef = (CtWildcardStaticTypeMemberReferenceImpl) ctImport.getReference();
-						String importRefStr = importRef.getQualifiedName();
-
-						importRefStr = importRefStr.substring(0, importRefStr.lastIndexOf("."));
+						CtTypeMemberWildcardImportReferenceImpl importRef = (CtTypeMemberWildcardImportReferenceImpl) ctImport.getReference();
+						String importRefStr = importRef.getTypeReference().getQualifiedName();
 						if (qualifiedName.equals(importRefStr)) {
 							return this.setImportUsed(ctImport);
 						}
 					}
 					break;
-
 
 				case TYPE:
 					if (isTypeRef) {
@@ -474,6 +520,36 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 						}
 					}
 					break;
+
+				case UNRESOLVED:
+					CtUnresolvedImport unresolvedImport = (CtUnresolvedImport) ctImport;
+					String importRef = unresolvedImport.getUnresolvedReference();
+					String importRefPrefix = null;
+
+					if (importRef.contains("*")) {
+						importRefPrefix = importRef.substring(0, importRef.length() - 1);
+					}
+
+					if (isTypeRef && !unresolvedImport.isStatic()) {
+						return importRef.equals(refQualifiedName)
+								|| (importRefPrefix != null
+								&& refQualifiedName.startsWith(importRefPrefix)
+								&& !refQualifiedName.substring(importRefPrefix.length()).contains(".")
+						);
+					}
+
+					if ((isExecRef || isFieldRef) && refDeclaringType != null && unresolvedImport.isStatic()) {
+						if (isExecRef) {
+							refQualifiedName = refDeclaringType + "." + ref.getSimpleName();
+						}
+						return importRef.equals(refQualifiedName)
+								|| (importRefPrefix != null
+								&& refQualifiedName.startsWith(importRefPrefix)
+								&& !refQualifiedName.substring(importRefPrefix.length()).contains(".")
+						);
+					}
+
+					break;
 			}
 		}
 		return false;
@@ -491,7 +567,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 			// then it is imported by default
 			if (pack != null &&  ref.getPackage() != null && !ref.getPackage().isUnnamedPackage()) {
 				// ignore java.lang package
-				if (!ref.getPackage().getSimpleName().equals("java.lang")) {
+				if (!"java.lang".equals(ref.getPackage().getSimpleName())) {
 					// ignore type in same package
 					if (ref.getPackage().getSimpleName()
 							.equals(pack.getSimpleName())) {
@@ -507,9 +583,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 
 		if (!(ref.isImplicit()) && classImports.containsKey(ref.getSimpleName())) {
 			CtTypeReference<?> exist = classImports.get(ref.getSimpleName());
-			if (exist.getQualifiedName().equals(ref.getQualifiedName())) {
-				return true;
-			}
+			return exist.getQualifiedName().equals(ref.getQualifiedName());
 		}
 		return false;
 	}
@@ -607,11 +681,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 
 		if (!(ref.isImplicit()) && methodImports.containsKey(ref.getSimpleName())) {
 			CtExecutableReference<?> exist = methodImports.get(ref.getSimpleName());
-			if (getSignature(exist).equals(
-					getSignature(ref))
-					) {
-				return true;
-			}
+			return getSignature(exist).equals(getSignature(ref));
 		}
 		return false;
 	}
@@ -814,8 +884,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 										return true;
 									}
 									// but if the other package names are not a variable name, it's ok to import
-									for (int i =  0; i < qualifiedNameTokens.size(); i++) {
-										String testedToken = qualifiedNameTokens.get(i);
+									for (String testedToken : qualifiedNameTokens) {
 										if (!fieldAndMethodsNames.contains(testedToken) && !localVariablesOfBlock.contains(testedToken)) {
 											return true;
 										}
@@ -829,8 +898,7 @@ public class ImportScannerImpl extends CtScanner implements ImportScanner {
 								}
 							} else {
 								// but if the other package names are not a variable name, it's ok to import
-								for (int i =  0; i < qualifiedNameTokens.size(); i++) {
-									String testedToken = qualifiedNameTokens.get(i);
+								for (String testedToken : qualifiedNameTokens) {
 									if (!fieldAndMethodsNames.contains(testedToken) && !localVariablesOfBlock.contains(testedToken)) {
 										return false;
 									}

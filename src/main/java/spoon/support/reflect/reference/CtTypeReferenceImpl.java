@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.reference;
 
@@ -27,6 +16,7 @@ import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtPackage;
 import spoon.reflect.declaration.CtShadowable;
 import spoon.reflect.declaration.CtType;
+import spoon.reflect.declaration.CtTypeMember;
 import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtActualTypeContainer;
@@ -38,15 +28,21 @@ import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtVisitor;
+import spoon.support.DerivedProperty;
 import spoon.support.SpoonClassNotFoundException;
 import spoon.support.reflect.declaration.CtElementImpl;
+import spoon.support.util.RtHelper;
+import spoon.support.util.internal.MapUtils;
 import spoon.support.visitor.ClassTypingContext;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,7 +66,6 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 	private CtPackageReference pack;
 
 	public CtTypeReferenceImpl() {
-		super();
 	}
 
 	@Override
@@ -83,31 +78,31 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		if (!isPrimitive()) {
 			return this;
 		}
-		if (getSimpleName().equals("int")) {
+		if ("int".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Integer.class);
 		}
-		if (getSimpleName().equals("float")) {
+		if ("float".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Float.class);
 		}
-		if (getSimpleName().equals("long")) {
+		if ("long".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Long.class);
 		}
-		if (getSimpleName().equals("char")) {
+		if ("char".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Character.class);
 		}
-		if (getSimpleName().equals("double")) {
+		if ("double".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Double.class);
 		}
-		if (getSimpleName().equals("boolean")) {
+		if ("boolean".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Boolean.class);
 		}
-		if (getSimpleName().equals("short")) {
+		if ("short".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Short.class);
 		}
-		if (getSimpleName().equals("byte")) {
+		if ("byte".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Byte.class);
 		}
-		if (getSimpleName().equals("void")) {
+		if ("void".equals(getSimpleName())) {
 			return getFactory().Type().createReference(Void.class);
 		}
 		return this;
@@ -141,6 +136,9 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		return findClass();
 	}
 
+	private static Map<String, Class> classByQName = Collections.synchronizedMap(new HashMap<>());
+	private static ClassLoader lastClassLoader = null;
+
 	/**
 	 * Finds the class requested in {@link #getActualClass()}.
 	 *
@@ -148,16 +146,33 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 	 */
 	@SuppressWarnings("unchecked")
 	protected Class<T> findClass() {
-		try {
-			// creating a classloader on the fly is not the most efficient
-			// but it decreases the amount of state to maintain
-			// since getActualClass is only used in rare cases, that's OK.
-			ClassLoader classLoader = getFactory().getEnvironment().getInputClassLoader();
-			String qualifiedName = getQualifiedName();
-			return (Class<T>) classLoader.loadClass(qualifiedName);
-		} catch (Throwable e) {
-			throw new SpoonClassNotFoundException("cannot load class: " + getQualifiedName(), e);
+		String qualifiedName = getQualifiedName();
+		ClassLoader classLoader = getFactory().getEnvironment().getInputClassLoader();
+
+		// an array class should not crash
+		// see https://github.com/INRIA/spoon/pull/2882
+		if (getSimpleName().contains("[]")) {
+			// Class.forName does not work for primitive types and arrays :-(
+			// we have to work-around
+			// original idea from https://bugs.openjdk.java.net/browse/JDK-4031337
+			return (Class<T>) RtHelper.getAllFields((Launcher.parseClass("public class Foo { public " + getQualifiedName() + " field; }").newInstance().getClass()))[0].getType();
 		}
+
+		if (classLoader != lastClassLoader) {
+			//clear cache because class loader changed
+			classByQName.clear();
+			lastClassLoader = classLoader;
+		}
+		return MapUtils.getOrCreate(classByQName, qualifiedName, () -> {
+			try {
+				// creating a classloader on the fly is not the most efficient
+				// but it decreases the amount of state to maintain
+				// since getActualClass is only used in rare cases, that's OK.
+				return (Class<T>) classLoader.loadClass(qualifiedName);
+			} catch (Throwable e) {
+				throw new SpoonClassNotFoundException("cannot load class: " + getQualifiedName(), e);
+			}
+		});
 	}
 
 	@Override
@@ -228,8 +243,13 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		if (isPrimitive() || type.isPrimitive()) {
 			return equals(type);
 		}
-		if (((this instanceof CtArrayTypeReference) && (type instanceof CtArrayTypeReference))) {
-			return ((CtArrayTypeReference<?>) this).getComponentType().isSubtypeOf(((CtArrayTypeReference<?>) type).getComponentType());
+		if (this instanceof CtArrayTypeReference) {
+			if (type instanceof CtArrayTypeReference) {
+				return ((CtArrayTypeReference<?>) this).getComponentType().isSubtypeOf(((CtArrayTypeReference<?>) type).getComponentType());
+			}
+			if (Array.class.getName().equals(type.getQualifiedName())) {
+				return true;
+			}
 		}
 		if (Object.class.getName().equals(type.getQualifiedName())) {
 			//everything is a sub type of Object
@@ -369,6 +389,7 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		return null;
 	}
 
+	@Override
 	public CtFieldReference<?> getDeclaredOrInheritedField(String fieldName) {
 		CtType<?> t = getTypeDeclaration();
 		if (t != null) {
@@ -553,6 +574,10 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 	@Override
 	public boolean canAccess(CtTypeReference<?> type) {
 		try {
+			if (type == null) {
+				//noclasspath mode
+				return true;
+			}
 			if (type.getTypeDeclaration() == null) {
 				return true;
 			}
@@ -599,8 +624,56 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		}
 	}
 
+	@Override
+	public boolean canAccess(CtTypeMember typeMember) {
+		CtType<?> declaringType = typeMember.getDeclaringType();
+		if (declaringType == null) {
+			//noclasspath mode
+			return true;
+		}
+		CtTypeReference<?> declaringTypeRef = declaringType.getReference();
+		if (!canAccess(declaringTypeRef)) {
+			return false;
+		}
+		Set<ModifierKind> modifiers = typeMember.getModifiers();
+
+		if (modifiers.contains(ModifierKind.PUBLIC)) {
+			return true;
+		}
+		if (modifiers.contains(ModifierKind.PROTECTED)) {
+			if (isImplementationOf(declaringTypeRef)) {
+				//type is visible in code which implements declaringType
+				return true;
+			} //else it is visible in same package, like package protected
+			return isInSamePackage(declaringTypeRef);
+		}
+		if (modifiers.contains(ModifierKind.PRIVATE)) {
+			//it is visible in scope of the same class only
+			return declaringType.getTopLevelType().getQualifiedName().equals(this.getTopLevelType().getQualifiedName());
+		}
+		/*
+		 * no modifier, we have to check if it is nested type and if yes, if parent is interface or class.
+		 * In case of no parent then implicit access is package protected
+		 * In case of parent is interface, then implicit access is PUBLIC
+		 * In case of parent is class, then implicit access is package protected
+		 */
+		CtType<?> declaringTypeDeclaringType = declaringType.getDeclaringType();
+		if (declaringTypeDeclaringType != null && declaringTypeDeclaringType.isInterface()) {
+			//the declaring type is interface, then implicit access is PUBLIC
+			return true;
+		}
+		//package protected
+		//visible only in scope of the same package
+		return isInSamePackage(declaringTypeRef);
+	}
+
 	private boolean isInSamePackage(CtTypeReference<?> type) {
-		return type.getTopLevelType().getPackage().getSimpleName().equals(this.getTopLevelType().getPackage().getSimpleName());
+		CtPackageReference thisPackage = this.getTopLevelType().getPackage();
+		CtPackageReference otherPackage = type.getTopLevelType().getPackage();
+		if (thisPackage == null || otherPackage == null) {
+			return true;
+		}
+		return thisPackage.getQualifiedName().equals(otherPackage.getQualifiedName());
 	}
 
 	@Override
@@ -744,10 +817,22 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		if (parent instanceof CtExecutableReference) {
 			CtExecutable<?> exec = ((CtExecutableReference<?>) parent).getExecutableDeclaration();
 			if (exec instanceof CtMethod || exec instanceof CtConstructor) {
-				return findTypeParamDeclarationByPosition((CtFormalTypeDeclarer) exec, ((CtTypeReference) parent).getActualTypeArguments().indexOf(this));
+				int idx = ((CtExecutableReference) parent).getActualTypeArguments().indexOf(this);
+				return idx >= 0 ? findTypeParamDeclarationByPosition((CtFormalTypeDeclarer) exec, idx) : null;
 			}
 		}
 
+		if (parent instanceof CtFormalTypeDeclarer) {
+			CtFormalTypeDeclarer exec = (CtFormalTypeDeclarer) parent;
+			if (exec instanceof CtMethod || exec instanceof CtConstructor) {
+				for (CtTypeParameter typeParam : exec.getFormalCtTypeParameters()) {
+					if (typeParam.getSimpleName().equals(getSimpleName())) {
+						return typeParam;
+					}
+				}
+				return null;
+			}
+		}
 		return null;
 	}
 
@@ -764,6 +849,11 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		return false;
 	}
 
+	@Override
+	public boolean isParameterized() {
+		return !getActualTypeArguments().isEmpty();
+	}
+
 	private CtTypeParameter findTypeParamDeclarationByPosition(CtFormalTypeDeclarer type, int position) {
 		return type.getFormalCtTypeParameters().get(position);
 	}
@@ -776,5 +866,32 @@ public class CtTypeReferenceImpl<T> extends CtReferenceImpl implements CtTypeRef
 		CtTypeReference<?> erasedRef = clone();
 		erasedRef.getActualTypeArguments().clear();
 		return erasedRef;
+	}
+
+	@Override
+	@DerivedProperty
+	public boolean isImplicitParent() {
+		if (pack != null) {
+			return pack.isImplicit();
+		} else if (declaringType != null) {
+			return declaringType.isImplicit();
+		}
+		return false;
+	}
+
+	@Override
+	@DerivedProperty
+	public CtTypeReferenceImpl<T> setImplicitParent(boolean parentIsImplicit) {
+		if (pack != null) {
+			pack.setImplicit(parentIsImplicit);
+		} else if (declaringType != null) {
+			declaringType.setImplicit(parentIsImplicit);
+		}
+		return this;
+	}
+
+	@Override
+	public boolean isArray() {
+		return getSimpleName().contains("[");
 	}
 }

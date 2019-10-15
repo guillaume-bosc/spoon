@@ -25,16 +25,18 @@ Spoon is an open-source library that enables you to transform (see [example](/fi
 
 ## Support
 
-You have different options:
-
-* Open an issue on [Github](https://github.com/INRIA/spoon/issues) (preferred).
-* Post a question to [StackOverflow with tag inria-spoon](http://stackoverflow.com/tags/inria-spoon).
+To report a bug or ask a question, open an issue on [Github](https://github.com/INRIA/spoon/issues).
 
 ## News
 
 Star Spoon on Github: [https://github.com/INRIA/spoon](https://github.com/INRIA/spoon). :-)
 
 <!-- .* Marker comment. -->
+- July 2019: Spoon 7.5.0 is released [(changelog)](https://github.com/INRIA/spoon/pull/3057)
+- May 2019: Spoon 7.4.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-7.4.0)
+- Februray 10, 2019: Spoon 7.3.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-7.3.0) 
+- December 4, 2018: Spoon 7.2.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-7.2.0) 
+- October 10, 2018: Spoon 7.1.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-7.1.0) 
 - July 4, 2018: Spoon 7.0.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-7.0.0) 
 - March 8, 2018: Spoon 6.2.0 is released [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-6.2.0)
 - December 20, 2017: Spoon 6.1.0 is released, merry christmas! :christmas_tree: [(changelog)](https://github.com/INRIA/spoon/releases/tag/spoon-core-6.1.0)
@@ -71,9 +73,7 @@ Star Spoon on Github: [https://github.com/INRIA/spoon](https://github.com/INRIA/
 
 ### Jar file
 
-[v{{site.spoon_release}} JAR](https://gforge.inria.fr/frs/?group_id=73) - [Javadoc](http://spoon.gforge.inria.fr/mvnsites/spoon-core/apidocs)
-
-The source code to the Spoon and this website is [available on GitHub](https://github.com/INRIA/spoon).
+Latest version: <https://search.maven.org/remote_content?g=fr.inria.gforge.spoon&a=spoon-core&v=LATEST&c=jar-with-dependencies> - [Javadoc](http://spoon.gforge.inria.fr/mvnsites/spoon-core/spoon-core/apidocs/index.html)
 
 ### Maven
 

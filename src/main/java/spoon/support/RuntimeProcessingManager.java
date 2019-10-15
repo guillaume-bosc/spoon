@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support;
 
@@ -52,10 +41,10 @@ public class RuntimeProcessingManager implements ProcessingManager {
 	 * 		meta-model)
 	 */
 	public RuntimeProcessingManager(Factory factory) {
-		super();
 		setFactory(factory);
 	}
 
+	@Override
 	public void addProcessor(Class<? extends Processor<?>> type) {
 		try {
 			Processor<?> p = type.newInstance();
@@ -67,11 +56,13 @@ public class RuntimeProcessingManager implements ProcessingManager {
 		}
 	}
 
+	@Override
 	public boolean addProcessor(Processor<?> p) {
 		p.setFactory(getFactory());
 		return getProcessors().add(p);
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public void addProcessor(String qualifiedName) {
 		try {
@@ -85,10 +76,12 @@ public class RuntimeProcessingManager implements ProcessingManager {
 		return current;
 	}
 
+	@Override
 	public Factory getFactory() {
 		return factory;
 	}
 
+	@Override
 	public List<Processor<?>> getProcessors() {
 		if (processors == null) {
 			processors = new LinkedList<>();
@@ -103,6 +96,7 @@ public class RuntimeProcessingManager implements ProcessingManager {
 		return visitor;
 	}
 
+	@Override
 	public void process(Collection<? extends CtElement> elements) {
 		for (Processor<?> p : getProcessors()) {
 			current = p;
@@ -124,6 +118,7 @@ public class RuntimeProcessingManager implements ProcessingManager {
 		}
 	}
 
+	@Override
 	public void process(CtElement element) {
 		for (Processor<?> p : getProcessors()) {
 			current = p;
@@ -143,6 +138,7 @@ public class RuntimeProcessingManager implements ProcessingManager {
 		processor.processingDone();
 	}
 
+	@Override
 	public void setFactory(Factory factory) {
 		this.factory = factory;
 		factory.getEnvironment().setManager(this);

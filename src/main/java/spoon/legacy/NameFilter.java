@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.legacy;
 
@@ -20,8 +9,6 @@ package spoon.legacy;
 import spoon.reflect.declaration.CtNamedElement;
 import spoon.reflect.visitor.Filter;
 import spoon.reflect.visitor.filter.NamedElementFilter;
-
-
 
 
 /**
@@ -32,14 +19,12 @@ import spoon.reflect.visitor.filter.NamedElementFilter;
  * 		new NameFilter&lt;CtMethod&lt;?&gt;&gt;(&quot;normalFor&quot;)).get(0);
  * </pre>
  *
- * @deprecated Use {@link NamedElementFilter} instead: the actual NameFilter could return wrongly typed results. NamedElementFilter explicit the use of a type.
+ * Use {@link NamedElementFilter} instead: the actual NameFilter could return wrongly typed results. NamedElementFilter explicit the use of a type.
  */
 public class NameFilter<T extends CtNamedElement> implements Filter<T> {
 	private final String name;
 
-
 	/**
-	 *
 	 * @param name Name of the expected element
 	 */
 	public NameFilter(String name) {
@@ -49,7 +34,7 @@ public class NameFilter<T extends CtNamedElement> implements Filter<T> {
 		this.name = name;
 	}
 
-
+	@Override
 	public boolean matches(T element) {
 		try {
 			return name.equals(element.getSimpleName());
@@ -58,10 +43,8 @@ public class NameFilter<T extends CtNamedElement> implements Filter<T> {
 		}
 	}
 
-
 	@SuppressWarnings("unchecked")
 	public Class<T> getType() {
 		return (Class<T>) CtNamedElement.class;
 	}
 }
-

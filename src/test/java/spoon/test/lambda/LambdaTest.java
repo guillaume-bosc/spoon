@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.lambda;
 
 import org.junit.Before;
@@ -16,6 +32,7 @@ import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtArrayTypeReference;
+import spoon.reflect.reference.CtIntersectionTypeReference;
 import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
@@ -27,6 +44,7 @@ import spoon.reflect.visitor.filter.NamedElementFilter;
 import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.test.lambda.testclasses.Bar;
 import spoon.test.lambda.testclasses.Foo;
+import spoon.test.lambda.testclasses.Intersection;
 import spoon.test.lambda.testclasses.Kuu;
 import spoon.test.lambda.testclasses.LambdaRxJava;
 import spoon.test.lambda.testclasses.Panini;
@@ -42,6 +60,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static spoon.testing.utils.ModelUtils.canBeBuilt;
@@ -54,10 +73,11 @@ public class LambdaTest {
 	private CtType<Object> panini;
 	private CtType<Object> tacos;
 	private CtType<LambdaRxJava> lambdaRxJava;
+	private CtType<Intersection> intersection;
 	private SpoonModelBuilder compiler;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		launcher = new Launcher();
 		launcher.setArgs(new String[] {"--output-type", "nooutput" });
 		this.factory = launcher.getFactory();
@@ -72,10 +92,11 @@ public class LambdaTest {
 		panini = factory.Type().get(Panini.class);
 		tacos = factory.Type().get(Tacos.class);
 		lambdaRxJava = factory.Type().get(LambdaRxJava.class);
+		intersection = factory.Type().get(Intersection.class);
 	}
 
 	@Test
-	public void testLambdaExpressionWithExpressionBodyAndWithoutParameter() throws Exception {
+	public void testLambdaExpressionWithExpressionBodyAndWithoutParameter() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(0);
 
 		assertTypedBy(Foo.Check.class, lambda.getType());
@@ -96,7 +117,7 @@ public class LambdaTest {
 				runLaunch.getModel().getElements(new Filter<CtTypeAccess>() {
 			@Override
 			public boolean matches(final CtTypeAccess element) {
-				return element.getAccessedType().getSimpleName().equals("Strings");
+				return "Strings".equals(element.getAccessedType().getSimpleName());
 			}
 		}).size());
 	}
@@ -114,14 +135,14 @@ public class LambdaTest {
 			@Override
 			public boolean matches(final CtFieldAccess element) {
 				final String name = element.getVariable().getSimpleName();
-				return name.equals("localField")
-						|| name.equals("pathSeparator")
-						|| name.equals("fieldInSeparateInterface")
-						|| name.equals("fieldInClassBase")
-						|| name.equals("fieldInClass")
-						|| name.equals("fieldInInterfaceBase")
-						|| name.equals("fieldInInterface")
-						|| name.equals("iAmToLazyForAnotherFieldName");
+				return "localField".equals(name)
+						|| "pathSeparator".equals(name)
+						|| "fieldInSeparateInterface".equals(name)
+						|| "fieldInClassBase".equals(name)
+						|| "fieldInClass".equals(name)
+						|| "fieldInInterfaceBase".equals(name)
+						|| "fieldInInterface".equals(name)
+						|| "iAmToLazyForAnotherFieldName".equals(name);
 			}
 		});
 		assertEquals(8, fieldAccesses.size());
@@ -137,83 +158,83 @@ public class LambdaTest {
 		assertEquals(3, runLaunch.getModel().getElements(new Filter<CtFieldAccess>() {
 			@Override
 			public boolean matches(final CtFieldAccess element) {
-				return element.getVariable().getSimpleName().equals("DEFAULT_RATING");
+				return "DEFAULT_RATING".equals(element.getVariable().getSimpleName());
 			}
 		}).size());
 	}
 
 	@Test
-	public void testLambdaExpressionWithExpressionBodyAndWithoutTypeForParameter() throws Exception {
+	public void testLambdaExpressionWithExpressionBodyAndWithoutTypeForParameter() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(1);
 
 		assertTypedBy(Predicate.class, lambda.getType());
 		assertParametersSizeIs(1, lambda.getParameters());
-		final CtParameter<?> parameter = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter);
 		assertParameterIsNamedBy("p", parameter);
 		assertHasExpressionBody(lambda);
 
 		assertIsWellPrinted(
-				"((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) (( p) -> (p.age) > 10))",
+				"((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) (( p) -> p.age > 10))",
 				lambda);
 	}
 
 	@Test
-	public void testLambdaExpressionWithExpressionBodyAndWithMultiParameters() throws Exception {
+	public void testLambdaExpressionWithExpressionBodyAndWithMultiParameters() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(2);
 
 		assertTypedBy(Foo.CheckPersons.class, lambda.getType());
 		assertParametersSizeIs(2, lambda.getParameters());
-		final CtParameter<?> parameter1 = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter1 = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter1);
 		assertParameterIsNamedBy("p1", parameter1);
-		final CtParameter<?> parameter2 = (CtParameter<?>) lambda.getParameters().get(1);
+		final CtParameter<?> parameter2 = lambda.getParameters().get(1);
 		assertParameterTypedBy(Foo.Person.class, parameter2);
 		assertParameterIsNamedBy("p2", parameter2);
 		assertHasExpressionBody(lambda);
 
 		assertIsWellPrinted(
-				"((spoon.test.lambda.testclasses.Foo.CheckPersons) (( p1, p2) -> ((p1.age) - (p2.age)) > 0))",
+				"((spoon.test.lambda.testclasses.Foo.CheckPersons) (( p1, p2) -> (p1.age - p2.age) > 0))",
 				lambda);
 	}
 
 	@Test
-	public void testLambdaExpressionWithExpressionBodyAndWithParameterTyped() throws Exception {
+	public void testLambdaExpressionWithExpressionBodyAndWithParameterTyped() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(3);
 
 		assertTypedBy(Predicate.class, lambda.getType());
 		assertParametersSizeIs(1, lambda.getParameters());
-		final CtParameter<?> parameter = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter);
 		assertParameterIsNamedBy("p", parameter);
 		assertHasExpressionBody(lambda);
 
 		assertIsWellPrinted(
-				"((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) ((spoon.test.lambda.testclasses.Foo.Person p) -> (p.age) > 10))",
+				"((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) ((spoon.test.lambda.testclasses.Foo.Person p) -> p.age > 10))",
 				lambda);
 	}
 
 	@Test
-	public void testLambdaExpressionWithExpressionBodyAndWithMultiParametersTyped() throws Exception {
+	public void testLambdaExpressionWithExpressionBodyAndWithMultiParametersTyped() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(4);
 
 		assertTypedBy(Foo.CheckPersons.class, lambda.getType());
 		assertParametersSizeIs(2, lambda.getParameters());
-		final CtParameter<?> parameter1 = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter1 = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter1);
 		assertParameterIsNamedBy("p1", parameter1);
-		final CtParameter<?> parameter2 = (CtParameter<?>) lambda.getParameters().get(1);
+		final CtParameter<?> parameter2 = lambda.getParameters().get(1);
 		assertParameterTypedBy(Foo.Person.class, parameter2);
 		assertParameterIsNamedBy("p2", parameter2);
 		assertHasExpressionBody(lambda);
 
 		assertIsWellPrinted(
-				"((spoon.test.lambda.testclasses.Foo.CheckPersons) ((spoon.test.lambda.testclasses.Foo.Person p1,spoon.test.lambda.testclasses.Foo.Person p2) -> ((p1.age) - (p2.age)) > 0))",
+				"((spoon.test.lambda.testclasses.Foo.CheckPersons) ((spoon.test.lambda.testclasses.Foo.Person p1,spoon.test.lambda.testclasses.Foo.Person p2) -> (p1.age - p2.age) > 0))",
 				lambda);
 	}
 
 	@Test
-	public void testLambdaExpressionWithStatementBodyAndWithoutParameters() throws Exception {
+	public void testLambdaExpressionWithStatementBodyAndWithoutParameters() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(5);
 
 		assertTypedBy(Foo.Check.class, lambda.getType());
@@ -227,12 +248,12 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testLambdaExpressionWithStatementBodyAndWithParameter() throws Exception {
+	public void testLambdaExpressionWithStatementBodyAndWithParameter() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(6);
 
 		assertTypedBy(Predicate.class, lambda.getType());
 		assertParametersSizeIs(1, lambda.getParameters());
-		final CtParameter<?> parameter = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter);
 		assertParameterIsNamedBy("p", parameter);
 		assertStatementBody(lambda);
@@ -241,17 +262,17 @@ public class LambdaTest {
 				"((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) (( p) -> {"
 						+ System.lineSeparator()
 						+ "    p.doSomething();" + System.lineSeparator()
-						+ "    return (p.age) > 10;" + System.lineSeparator()
+						+ "    return p.age > 10;" + System.lineSeparator()
 						+ "}))", lambda);
 	}
 
 	@Test
-	public void testLambdaExpressionInIfConditional() throws Exception {
+	public void testLambdaExpressionInIfConditional() {
 		final CtLambda<?> lambda = getLambdaInFooByNumber(7);
 
 		assertTypedBy(Predicate.class, lambda.getType());
 		assertParametersSizeIs(1, lambda.getParameters());
-		final CtParameter<?> parameter = (CtParameter<?>) lambda.getParameters().get(0);
+		final CtParameter<?> parameter = lambda.getParameters().get(0);
 		assertParameterTypedBy(Foo.Person.class, parameter);
 		assertParameterIsNamedBy("p", parameter);
 		assertHasExpressionBody(lambda);
@@ -264,7 +285,7 @@ public class LambdaTest {
 			}
 		}).get(0);
 		final String expected =
-				"if (((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) (( p) -> (p.age) > 18)).test(new spoon.test.lambda.testclasses.Foo.Person(10))) {"
+				"if (((java.util.function.Predicate<spoon.test.lambda.testclasses.Foo.Person>) (( p) -> p.age > 18)).test(new spoon.test.lambda.testclasses.Foo.Person(10))) {"
 						+ System.lineSeparator()
 						+ "    java.lang.System.err.println(\"Enjoy, you have more than 18.\");" + System
 						.lineSeparator()
@@ -273,14 +294,14 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testCompileLambdaGeneratedBySpoon() throws Exception {
+	public void testCompileLambdaGeneratedBySpoon() {
 		launcher.setSourceOutputDirectory(new File("./target/spooned/"));
 		launcher.getModelBuilder().generateProcessedSourceFiles(OutputType.CLASSES);
 		canBeBuilt(new File("./target/spooned/spoon/test/lambda/testclasses/"), 8);
 	}
 
 	@Test
-	public void testTypeParameterOfLambdaWithoutType() throws Exception {
+	public void testTypeParameterOfLambdaWithoutType() {
 		final CtLambda<?> lambda1 = bar.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class)).get(0);
 		assertEquals(1, lambda1.getParameters().size());
 		final CtParameter<?> ctParameterFirstLambda = lambda1.getParameters().get(0);
@@ -290,7 +311,7 @@ public class LambdaTest {
 		assertEquals("SingleSubscriber", ctParameterFirstLambda.getType().getSimpleName());
 	}
 	@Test
-    	public void testTypeParameterOfLambdaWithoutType2() throws Exception {
+    	public void testTypeParameterOfLambdaWithoutType2() {
 		final CtLambda<?> lambda2 = bar.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class)).get(1);
 		assertEquals(2, lambda2.getParameters().size());
 		final CtParameter<?> ctParameterSecondLambda = lambda2.getParameters().get(0);
@@ -301,7 +322,7 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testTypeParameterWithImplicitArrayType() throws Exception {
+	public void testTypeParameterWithImplicitArrayType() {
 		final CtLambda<?> lambda = panini.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class)).get(0);
 
 		assertEquals(1, lambda.getParameters().size());
@@ -318,7 +339,7 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testLambdaWithPrimitiveParameter() throws Exception {
+	public void testLambdaWithPrimitiveParameter() {
 		final CtLambda<?> lambda = tacos.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class)).get(0);
 
 		assertEquals(2, lambda.getParameters().size());
@@ -352,16 +373,16 @@ public class LambdaTest {
 	}
 	
 	@Test
-	public void testEqualsLambdaParameterRef() throws Exception {
+	public void testEqualsLambdaParameterRef() {
 		CtLambda<?> lambda = getLambdaInFooByNumber(8);
-		CtParameter<?> param = (CtParameter<?>)lambda.getParameters().get(0);
+		CtParameter<?> param = lambda.getParameters().get(0);
 		CtParameterReference paramRef1 = param.getReference();
 		CtParameterReference paramRef2 = lambda.filterChildren(new TypeFilter<>(CtParameterReference.class)).first();
 		assertTrue(paramRef1.equals(paramRef2));
 	}
 
 	@Test
-	public void testLambdaMethod() throws Exception {
+	public void testLambdaMethod() {
 		CtLambda<?> lambda = getLambdaInFooByNumber(8);
 		CtMethod<?> method = lambda.getOverriddenMethod();
 		CtTypeReference<?> iface = lambda.getType();
@@ -377,8 +398,8 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testGetOverriddenMethodWithFunction() throws Exception {
-		List<CtLambda<?>> allLambdas = lambdaRxJava.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class));
+	public void testGetOverriddenMethodWithFunction() {
+		List<CtLambda<?>> allLambdas = lambdaRxJava.getElements(new TypeFilter<>(CtLambda.class));
 		assertEquals(1, allLambdas.size());
 		CtLambda<?> lambda = allLambdas.get(0);
 		CtMethod<?> method = lambda.getOverriddenMethod();
@@ -387,7 +408,7 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testLambdaFilter() throws Exception {
+	public void testLambdaFilter() {
 		//check constructor with CtInterface
 		List<String> methodNames = foo.filterChildren(new LambdaFilter((CtInterface<?>) foo.getNestedType("CheckPerson"))).map((CtLambda l)->l.getParent(CtMethod.class).getSimpleName()).list();
 		assertHasStrings(methodNames);
@@ -403,7 +424,7 @@ public class LambdaTest {
 	}
 
 	@Test
-	public void testInterfaceWithObjectMethods() throws Exception {
+	public void testInterfaceWithObjectMethods() {
 		// contract Lambda expression works on interfaces with methods inherited from java.lang.Object
 		CtInterface<?> checkPersons = factory.Interface().get(Foo.CheckPersons.class);
 		List<CtLambda<?>> lambdas = foo.filterChildren(new LambdaFilter(checkPersons)).list();
@@ -415,17 +436,33 @@ public class LambdaTest {
 		assertEquals("test", method.getSimpleName());
 	}
 
+	@Test
+	public void testLambdaWithGenericExtendingMultipleInterfaces() {
+		final CtLambda<?> lambda = intersection.getElements(new TypeFilter<CtLambda<?>>(CtLambda.class)).get(0);
+		assertEquals(1, lambda.getParameters().size());
+		final CtParameter<?> parameter = lambda.getParameters().get(0);
+		assertEquals("elt", parameter.getSimpleName());
+		assertTrue(parameter.getType().isImplicit());
+		assertEquals("", parameter.getType().toString());
+		CtIntersectionTypeReference typeReference = (CtIntersectionTypeReference) parameter.getType();
+
+		assertParameterIsNamedBy("elt", parameter);
+		assertTrue(typeReference.getBounds().size() == 2);
+		assertHasExpressionBody(lambda);
+		assertIsWellPrinted("( elt) -> elt.test()", lambda);
+	}
+
 	private void assertHasStrings(List<String> methodNames, String... strs) {
 		for (String str : strs) {
 			assertTrue("List should contain "+str+" but it is missing.", methodNames.remove(str));
 		}
-		if(methodNames.size()>0) {
-			fail("List should't contain "+methodNames);
+		if(!methodNames.isEmpty()) {
+			fail("List shouldn't contain "+methodNames);
 		}
 	}
 
 	private void assertTypedBy(Class<?> expectedType, CtTypeReference<?> type) {
-		assertEquals("Lambda must be typed", expectedType, type.getActualClass());
+		assertSame("Lambda must be typed", expectedType, type.getActualClass());
 	}
 
 	private void assertParametersSizeIs(int nbParameters, List<CtParameter<?>> parameters) {
@@ -438,7 +475,7 @@ public class LambdaTest {
 
 	private void assertParameterTypedBy(Class<?> expectedType, CtParameter<?> parameter) {
 		assertNotNull("Lambda has a parameter typed", parameter.getType());
-		assertEquals("Lambda has a parameter typed by", expectedType, parameter.getType().getActualClass());
+		assertSame("Lambda has a parameter typed by", expectedType, parameter.getType().getActualClass());
 	}
 
 	private void assertHasExpressionBody(CtLambda<?> lambda) {

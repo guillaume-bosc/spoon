@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.pattern.internal;
 
@@ -39,12 +28,14 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.FactoryImpl;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.PrinterHelper;
 import spoon.support.DefaultCoreFactory;
 import spoon.support.StandardEnvironment;
 import spoon.support.util.ImmutableMap;
 
 /**
+ * Generates the source code corresponding to a Pattern's RootNode
  */
 public class PatternPrinter extends DefaultGenerator {
 
@@ -54,6 +45,7 @@ public class PatternPrinter extends DefaultGenerator {
 	}
 
 	private List<ParamOnElement> params = new ArrayList<>();
+	private boolean printParametersAsComments = true;
 
 	public PatternPrinter() {
 		super(DEFAULT_FACTORY, null);
@@ -72,7 +64,7 @@ public class PatternPrinter extends DefaultGenerator {
 	public <T> void generateTargets(RootNode node, ResultHolder<T> result, ImmutableMap parameters) {
 		int firstResultIdx = result.getResults().size();
 		if (node instanceof InlineNode) {
-			//this is a inline node. Do not generated nodes normally, but generate origin inline statements
+			//this is an inline node. Does not generate nodes normally, but generates origin inline statements
 			((InlineNode) node).generateInlineTargets(this, result, parameters);
 		} else {
 			super.generateTargets(node, result, parameters);
@@ -89,11 +81,11 @@ public class PatternPrinter extends DefaultGenerator {
 							return;
 						}
 						//it is an attribute with an substitution
-						//it will be added only if it is not already added linked to an CtElement
+						//it will be added only if it is not already added linked to the CtElement
 						paramsOnElement.add(new ParamOnElement((CtElement) firstResult, mmField.getRole(), attrNode));
 					});
 				}
-				addParameterCommentTo((CtElement) firstResult, paramsOnElement.toArray(new ParamOnElement[paramsOnElement.size()]));
+				addParameterCommentTo((CtElement) firstResult, paramsOnElement.toArray(new ParamOnElement[0]));
 			} else if (node instanceof ParameterNode) {
 				addParameterCommentTo((CtElement) firstResult, new ParamOnElement((CtElement) firstResult, node));
 			}
@@ -115,9 +107,7 @@ public class PatternPrinter extends DefaultGenerator {
 		if (obj instanceof CtElement) {
 			MetamodelConcept mmType = Metamodel.getInstance().getConcept((Class) obj.getClass());
 			MetamodelProperty mmCommentField = mmType.getProperty(CtRole.COMMENT);
-			if (mmCommentField != null && mmCommentField.isDerived() == false) {
-				return true;
-			}
+			return mmCommentField != null && mmCommentField.isDerived() == false;
 		}
 		return false;
 	}
@@ -144,7 +134,7 @@ public class PatternPrinter extends DefaultGenerator {
 				params.add(paramOnElement);
 			}
 		}
-		if (isCommentVisible(ele) && !params.isEmpty()) {
+		if (isPrintParametersAsComments() && isCommentVisible(ele) && !params.isEmpty()) {
 			ele.addComment(ele.getFactory().Code().createComment(getSubstitutionRequestsDescription(ele, params), CommentType.BLOCK));
 			params.clear();
 		}
@@ -160,10 +150,9 @@ public class PatternPrinter extends DefaultGenerator {
 	}
 
 	/**
-	 * Creates a element which will be printed in source code of pattern as marker of parameter
-	 * @param factory a SpoonFactory which has to be used to create new elements
-	 * @param potentialParameterMarker
-	 * @param type
+	 * Creates an element which will be printed in source code of pattern as marker of parameter
+	 * @param parameterInfo describes a pattern parameter to be printed
+	 * @param type class of the generated element
 	 * @return dummy template element, which represents a template type in source of generated Pattern.
 	 * Or null if potentialParameterMarker is not a marker of parameter
 	 */
@@ -177,6 +166,9 @@ public class PatternPrinter extends DefaultGenerator {
 			}
 			if (type.isAssignableFrom(String.class)) {
 				return (T) parameterInfo.getName();
+			}
+			if (type.isAssignableFrom(CtTypeReference.class)) {
+				return (T) factory.Type().createReference(parameterInfo.getName());
 			}
 		}
 		return null;
@@ -251,5 +243,14 @@ public class PatternPrinter extends DefaultGenerator {
 			return name.substring(0, name.length() - 4);
 		}
 		return name;
+	}
+
+	public PatternPrinter setPrintParametersAsComments(boolean printParametersAsComments) {
+		this.printParametersAsComments = printParametersAsComments;
+		return this;
+	}
+
+	public boolean isPrintParametersAsComments() {
+		return printParametersAsComments;
 	}
 }

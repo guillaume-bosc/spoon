@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -82,14 +71,16 @@ class JDTTreeBuilderQuery {
 			return null;
 		}
 		for (CompilationUnitDeclaration unitToProcess : unitsToProcess) {
-			for (TypeDeclaration type : unitToProcess.types) {
-				if (qualifiedName.equals(CharOperation.toString(type.binding.compoundName))) {
-					return type.binding;
-				}
-				if (type.memberTypes != null) {
-					for (TypeDeclaration memberType : type.memberTypes) {
-						if (qualifiedName.equals(CharOperation.toString(memberType.binding.compoundName))) {
-							return type.binding;
+			if (unitToProcess.types != null) {
+				for (TypeDeclaration type : unitToProcess.types) {
+					if (qualifiedName.equals(CharOperation.toString(type.binding.compoundName))) {
+						return type.binding;
+					}
+					if (type.memberTypes != null) {
+						for (TypeDeclaration memberType : type.memberTypes) {
+							if (qualifiedName.equals(CharOperation.toString(memberType.binding.compoundName))) {
+								return type.binding;
+							}
 						}
 					}
 				}
@@ -108,14 +99,12 @@ class JDTTreeBuilderQuery {
 	 * @return qualified name of the expected type.
 	 */
 	static String searchType(String typeName, ImportReference[] imports) {
-		if (typeName == null) {
-			return null;
-		} else if (imports == null) {
+		if (typeName == null || imports == null) {
 			return null;
 		}
 		for (ImportReference anImport : imports) {
 			final String importType = CharOperation.charToString(anImport.getImportName()[anImport.getImportName().length - 1]);
-			if (importType != null && importType.equals(typeName)) {
+			if (typeName.equals(importType)) {
 				return CharOperation.toString(anImport.getImportName());
 			}
 		}

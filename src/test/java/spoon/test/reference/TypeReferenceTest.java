@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.reference;
 
 import org.junit.Test;
@@ -5,6 +21,8 @@ import spoon.Launcher;
 import spoon.SpoonModelBuilder;
 import spoon.compiler.SpoonResource;
 import spoon.compiler.SpoonResourceHelper;
+import spoon.reflect.CtModel;
+import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldRead;
@@ -35,11 +53,11 @@ import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.test.reference.testclasses.EnumValue;
 import spoon.test.reference.testclasses.Panini;
 import spoon.test.reference.testclasses.ParamRefs;
+import spoon.test.reference.testclasses.SuperAccess;
 import spoon.testing.utils.ModelUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,6 +66,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static spoon.testing.utils.ModelUtils.buildClass;
 import static spoon.testing.utils.ModelUtils.canBeBuilt;
@@ -95,7 +115,7 @@ public class TypeReferenceTest {
 
 		// Spoon requires the binary version of ReferencedClass
 		List<SpoonResource> classpath = SpoonResourceHelper.resources("./src/test/resources/reference-test/ReferenceTest.jar");
-		String[] dependencyClasspath = new String[] { classpath.get(0).getPath() };
+		String[] dependencyClasspath = { classpath.get(0).getPath() };
 
 		factory.getEnvironment().setSourceClasspath(dependencyClasspath);
 		assertEquals(1, classpath.size());
@@ -108,7 +128,7 @@ public class TypeReferenceTest {
 
 		// now we retrieve the reference to ReferencedClass
 		CtTypeReference referencedType = null;
-		ReferenceTypeFilter<CtTypeReference> referenceTypeFilter = new ReferenceTypeFilter<CtTypeReference>(CtTypeReference.class);
+		ReferenceTypeFilter<CtTypeReference> referenceTypeFilter = new ReferenceTypeFilter<>(CtTypeReference.class);
 		List<CtTypeReference> elements = Query.getElements(theClass, referenceTypeFilter);
 		for (CtTypeReference reference : elements) {
 			if (reference.getQualifiedName().equals(referencedQualifiedName)) {
@@ -116,7 +136,7 @@ public class TypeReferenceTest {
 				break;
 			}
 		}
-		assertFalse(referencedType == null);
+		assertNotNull(referencedType);
 
 		// we can get the actual class from the reference, because it is loaded from the class path
 		Class referencedClass = referencedType.getActualClass();
@@ -149,7 +169,7 @@ public class TypeReferenceTest {
 
 		// Spoon requires the binary version of dependencies
 		List<SpoonResource> classpath = SpoonResourceHelper.resources("./src/test/resources/reference-test-2/ReferenceTest2.jar");
-		String[] dependencyClasspath = new String[] { classpath.get(0).getPath() };
+		String[] dependencyClasspath = { classpath.get(0).getPath() };
 
 		factory.getEnvironment().setSourceClasspath(dependencyClasspath);
 		assertEquals(1, classpath.size());
@@ -186,7 +206,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testNullReferenceSubtype() throws Exception {
+	public void testNullReferenceSubtype() {
 		Launcher spoon = new Launcher();
 		Factory factory = spoon.createFactory();
 
@@ -202,11 +222,11 @@ public class TypeReferenceTest {
 	public void unboxTest() {
 		Factory factory = new Launcher().createFactory();
 		CtTypeReference<Boolean> boxedBoolean = factory.Class().createReference(Boolean.class);
-		assertEquals(boxedBoolean.unbox().getActualClass(), boolean.class);
+		assertSame(boolean.class, boxedBoolean.unbox().getActualClass());
 	}
 
 	@Test
-	public void testToStringEqualityBetweenTwoGenericTypeDifferent() throws Exception {
+	public void testToStringEqualityBetweenTwoGenericTypeDifferent() {
 		// contract: generic type references with different bounds should not be considered equals
 		final Launcher launcher = new Launcher();
 		launcher.setArgs(new String[] {"--output-type", "nooutput", "--noclasspath"});
@@ -223,7 +243,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testRecursiveTypeReference() throws Exception {
+	public void testRecursiveTypeReference() {
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/java/spoon/test/reference/testclasses/Tacos.java");
 		launcher.setSourceOutputDirectory("./target/spoon-test");
@@ -257,7 +277,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testRecursiveTypeReferenceInGenericType() throws Exception {
+	public void testRecursiveTypeReferenceInGenericType() {
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/java/spoon/test/reference/testclasses/EnumValue.java");
 		launcher.setSourceOutputDirectory("./target/spoon-test");
@@ -280,7 +300,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testUnknownSuperClassWithSameNameInNoClasspath() throws Exception {
+	public void testUnknownSuperClassWithSameNameInNoClasspath() {
 		// contract: Gets the import of a type specified in the declaration of a class.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/Attachment.java");
@@ -311,15 +331,14 @@ public class TypeReferenceTest {
 		boolean containsStringReference = false;
 		boolean containsJoinerReference = false;
 
-		for (Iterator<CtTypeReference<?>> iterator = referencedTypes.iterator(); iterator.hasNext(); ) {
-			CtTypeReference<?> reference = iterator.next();
-			if (reference.toString().equals("Demo")) {
+		for (CtTypeReference<?> reference : referencedTypes) {
+			if ("Demo".equals(reference.toString())) {
 				containsDemoReference = true;
-			} else if (reference.toString().equals("void")) {
+			} else if ("void".equals(reference.toString())) {
 				containsVoidReference = true;
-			} else if (reference.toString().equals("java.lang.String")) {
+			} else if ("java.lang.String".equals(reference.toString())) {
 				containsStringReference = true;
-			} else if (reference.toString().equals("com.google.common.base.Joiner")) {
+			} else if ("com.google.common.base.Joiner".equals(reference.toString())) {
 				containsJoinerReference = true;
 			}
 		}
@@ -330,7 +349,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testTypeReferenceSpecifiedInClassDeclarationInNoClasspath() throws Exception {
+	public void testTypeReferenceSpecifiedInClassDeclarationInNoClasspath() {
 		// contract: Gets the import of a type specified in the declaration of a class.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/Demo.java");
@@ -356,7 +375,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testTypeReferenceSpecifiedInClassDeclarationInNoClasspathWithGenerics() throws Exception {
+	public void testTypeReferenceSpecifiedInClassDeclarationInNoClasspathWithGenerics() {
 		// contract: Gets the import of a type specified in the declaration of a class.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/Demo2.java");
@@ -386,7 +405,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testArgumentOfAInvocationIsNotATypeAccess() throws Exception {
+	public void testArgumentOfAInvocationIsNotATypeAccess() {
 		// contract: In no classpath, an unknown field specified as argument isn't a CtTypeAccess.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/Demo3.java");
@@ -405,7 +424,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testInvocationWithFieldAccessInNoClasspath() throws Exception {
+	public void testInvocationWithFieldAccessInNoClasspath() {
 		// contract: In no classpath mode, if we have field accesses in an invocation, we should build field access and not type access.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/Demo4.java");
@@ -429,7 +448,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testAnnotationOnMethodWithPrimitiveReturnTypeInNoClasspath() throws Exception {
+	public void testAnnotationOnMethodWithPrimitiveReturnTypeInNoClasspath() {
 		// contract: In no classpath mode, if we have an annotation declared on a method and overridden
 		// from a super class in an anonymous class, we should rewrite correctly the annotation and don't
 		// throw a NPE.
@@ -448,7 +467,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testAnonymousClassesHaveAnEmptyStringForItsNameInNoClasspath() throws Exception {
+	public void testAnonymousClassesHaveAnEmptyStringForItsNameInNoClasspath() {
 		// contract: In no classpath mode, a type reference have an empty string for its name.
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/noclasspath/A.java");
@@ -473,7 +492,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testConstructorCallInNoClasspath() throws Exception {
+	public void testConstructorCallInNoClasspath() {
 		final Launcher launcher = new Launcher();
 		launcher.setArgs(new String[] {"--output-type", "nooutput" });
 		launcher.addInputResource("./src/test/resources/noclasspath/Demo5.java");
@@ -489,34 +508,34 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testShortTypeReference() throws Exception {
+	public void testShortTypeReference() {
 
-		CtTypeReference<Short> aShort = ModelUtils.createFactory().Type().SHORT;
-		CtTypeReference<Short> shortPrimitive = ModelUtils.createFactory().Type().SHORT_PRIMITIVE;
+		CtTypeReference<Short> aShort = createFactory().Type().SHORT;
+		CtTypeReference<Short> shortPrimitive = createFactory().Type().SHORT_PRIMITIVE;
 
-		assertEquals(Short.class, aShort.getActualClass());
-		assertEquals(short.class, shortPrimitive.getActualClass());
+		assertSame(Short.class, aShort.getActualClass());
+		assertSame(short.class, shortPrimitive.getActualClass());
 
 	}
 
 	@Test
-	public void testClearBoundsForTypeParameterReference() throws Exception {
+	public void testClearBoundsForWildcardReference() {
 		final Factory factory = createFactory();
-		final CtTypeParameterReference reference = factory.Type().createTypeParameterReference("T");
-		reference.addBound(factory.Type().createReference(String.class));
+		final CtWildcardReference reference = factory.createWildcardReference();
+		reference.setBoundingType(factory.Type().createReference(String.class));
 
-		assertNotNull(reference.getBoundingType());
+		assertEquals(factory.Type().STRING, reference.getBoundingType());
 
-		reference.setBounds(null);
+		reference.setBoundingType(null);
 
 		assertEquals(factory.Type().OBJECT, reference.getBoundingType());
 		assertTrue(reference.isDefaultBoundingType());
 
-		reference.addBound(factory.Type().createReference(String.class));
+		reference.setBoundingType(factory.Type().createReference(String.class));
 
-		assertNotNull(reference.getBoundingType());
+		assertEquals(factory.Type().STRING, reference.getBoundingType());
 
-		reference.setBounds(new ArrayList<>());
+		reference.setBoundingType(factory.Type().objectType());
 
 		assertEquals(factory.Type().OBJECT, reference.getBoundingType());
 		assertTrue(reference.isDefaultBoundingType());
@@ -553,7 +572,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testImproveAPIActualTypeReference() throws Exception {
+	public void testImproveAPIActualTypeReference() {
 		final Factory factory = createFactory();
 		List<CtTypeParameterReference> typeParameterReferences = new ArrayList<>();
 		typeParameterReferences.add(factory.Type().createTypeParameterReference("Foo"));
@@ -564,7 +583,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testIsSubTypeSuperClassNull() throws Exception {
+	public void testIsSubTypeSuperClassNull() {
 		Factory factory = createFactory();
 
 		factory.Class().create("Tacos");
@@ -586,7 +605,7 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testGetTypeDeclaration() throws Exception {
+	public void testGetTypeDeclaration() {
 		Launcher l = new Launcher();
 		l.addInputResource("src/test/resources/compilation/compilation-tests/");
 		l.buildModel();
@@ -597,19 +616,19 @@ public class TypeReferenceTest {
 	}
 
 	@Test
-	public void testTypeDeclarationWildcard() throws Exception {
+	public void testTypeDeclarationWildcard() {
 		// contract1: getTypeDeclaration nevers returns null, even for wilddards
 		// contract2: getTypeDeclaration returns a CtTYpe representing Object as the compiler does
 		CtLocalVariable<?> s = new Launcher().getFactory().Code().createCodeSnippetStatement("java.util.List<?> l = null").compile();
 		assertEquals("?", s.getType().getActualTypeArguments().get(0).getSimpleName());
-		assertTrue(CtWildcardReference.class.isInstance(s.getType().getActualTypeArguments().get(0)));
+		assertTrue(s.getType().getActualTypeArguments().get(0) instanceof CtWildcardReference);
 		assertEquals("Object", s.getType().getActualTypeArguments().get(0).getTypeDeclaration().getSimpleName());
-		assertEquals(Object.class, s.getType().getActualTypeArguments().get(0).getTypeDeclaration().getActualClass());
+		assertSame(Object.class, s.getType().getActualTypeArguments().get(0).getTypeDeclaration().getActualClass());
 
 		// some additional tests
 		CtLocalVariable<?> s2 = new Launcher().getFactory().Code().createCodeSnippetStatement("java.util.List<String> l = null").compile();
 		assertEquals("String", s2.getType().getActualTypeArguments().get(0).getSimpleName());
-		assertEquals(String.class, s2.getType().getActualTypeArguments().get(0).getTypeDeclaration().getActualClass());
+		assertSame(String.class, s2.getType().getActualTypeArguments().get(0).getTypeDeclaration().getActualClass());
 	}
 
 	@Test
@@ -617,17 +636,17 @@ public class TypeReferenceTest {
 		CtClass<ParamRefs> aClass = (CtClass) buildClass(ParamRefs.class);
 		CtParameter<?> parameter = aClass.getElements(new NamedElementFilter<>(CtParameter.class,"param")).get(0);
 		CtParameterReference<?> parameterRef1 = parameter.getReference();
-		CtParameterReference<?> parameterRef2 = aClass.getElements((CtParameterReference<?> ref)->ref.getSimpleName().equals("param")).get(0);
+		CtParameterReference<?> parameterRef2 = aClass.getElements((CtParameterReference<?> ref)-> "param".equals(ref.getSimpleName())).get(0);
 
 		// fresh reference not put in a context
-		assertEquals(null, parameterRef1.getDeclaringExecutable());
+		assertNull(parameterRef1.getDeclaringExecutable());
 		assertEquals(aClass.getReference(), parameterRef2.getDeclaringExecutable().getType());
 
 		assertEquals(parameterRef1, parameterRef2);
 	}
 
 	@Test
-	public void testTypeReferenceWithGenerics() throws Exception {
+	public void testTypeReferenceWithGenerics() {
 		// contract: in noclasspath, a generic type name should not contain generic information
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/test/resources/import-with-generics/TestWithGenerics.java");
@@ -635,10 +654,51 @@ public class TypeReferenceTest {
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.buildModel();
 
-		CtField field = launcher.getModel().getElements(new TypeFilter<CtField>(CtField.class)).get(0);
+		CtField field = launcher.getModel().getElements(new TypeFilter<>(CtField.class)).get(0);
 		CtTypeReference fieldTypeRef = field.getType();
 
 		assertEquals("spoon.test.imports.testclasses.withgenerics.Target", fieldTypeRef.getQualifiedName());
 		assertEquals(2, fieldTypeRef.getActualTypeArguments().size());
+	}
+	
+	@Test
+	public void testTypeReferenceImplicitParent() throws Exception {
+		// contract: CtTypeReference#isImplicitParent can be used read / write implicit value of the parent
+		CtType<?> type = ModelUtils.buildClass(SuperAccess.class);
+		CtTypeReference<?> typeRef = type.getSuperclass();
+		assertFalse(typeRef.isImplicitParent());
+		assertFalse(typeRef.getPackage().isImplicit());
+		
+		//calling of setImplicitParent influences implicitnes of parent
+		typeRef.setImplicitParent(true);
+		assertTrue(typeRef.isImplicitParent());
+		assertTrue(typeRef.getPackage().isImplicit());
+
+		//calling of setImplicit on parent influences return value of isImplicitParent
+		typeRef.getPackage().setImplicit(false);
+		assertFalse(typeRef.isImplicitParent());
+		assertFalse(typeRef.getPackage().isImplicit());
+	}
+
+	@Test
+	public void testIsInTheSamePackageNoClasspath() {
+		// contract: we should not get NPE within canAccess() in noclasspath mode
+		final Launcher launcher = new Launcher();
+		launcher.addInputResource("./src/test/resources/noclasspath/A5.java");
+		launcher.getEnvironment().setNoClasspath(true);
+		CtModel model = launcher.buildModel();
+		CtType<?> type = model.getAllTypes().stream().findFirst().get();
+
+		List<CtLocalVariable> vars = type.getElements(new TypeFilter<>(CtLocalVariable.class));
+		List<CtField> fields = type.getElements(new TypeFilter<>(CtField.class));
+		List<CtInvocation> invocations = type.getElements(new TypeFilter<>(CtInvocation.class));
+
+		// test null type
+		CtTypeReference tr1 = invocations.get(1).getType();
+		assertTrue(fields.get(0).getReference().getType().canAccess(tr1));
+
+		// test type with null package
+		CtTypeReference tr2 = fields.get(0).getType();
+		assertTrue(vars.get(0).getReference().getType().canAccess(tr2));
 	}
 }

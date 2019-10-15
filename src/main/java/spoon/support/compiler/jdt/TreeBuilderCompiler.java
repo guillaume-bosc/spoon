@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -65,19 +54,17 @@ class TreeBuilderCompiler extends org.eclipse.jdt.internal.compiler.Compiler {
 
 		this.reportProgress(Messages.compilation_beginningToCompile);
 
-		CompilationUnitDeclaration unit = null;
-		int i = 0;
-
 		this.sortModuleDeclarationsFirst(sourceUnits);
 		// build and record parsed units
 		beginToCompile(sourceUnits);
 
-		// process all units (some more could be injected in the loop by
-		// the lookup environment)
+		CompilationUnitDeclaration unit;
+		int i = 0;
+
+		// process all units (some more could be injected in the loop by the lookup environment)
 		for (; i < this.totalUnits; i++) {
 			unit = unitsToProcess[i];
 			this.reportProgress(Messages.bind(Messages.compilation_processing, new String(unit.getFileName())));
-			// System.err.println(unit);
 			this.parser.getMethodBodies(unit);
 
 			// fault in fields & methods
@@ -106,6 +93,6 @@ class TreeBuilderCompiler extends org.eclipse.jdt.internal.compiler.Compiler {
 				unitsToReturn.add(cud);
 			}
 		}
-		return unitsToReturn.toArray(new CompilationUnitDeclaration[unitsToReturn.size()]);
+		return unitsToReturn.toArray(new CompilationUnitDeclaration[0]);
 	}
 }

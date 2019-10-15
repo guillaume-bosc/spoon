@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2017 INRIA and contributors
+ * Copyright (C) 2006-2018 INRIA and contributors
  * Spoon - http://spoon.gforge.inria.fr/
  *
  * This software is governed by the CeCILL-C License under French law and
@@ -73,7 +73,6 @@ public class Metamodel {
 		private final Map<CtRole, Field> fieldsByRole;
 
 		private Type(String name, Class<? extends CtElement> modelInterface, Class<? extends CtElement> modelClass, Consumer<FieldMaker> fieldsCreator) {
-			super();
 			this.name = name;
 			this.modelClass = modelClass;
 			this.modelInterface = modelInterface;
@@ -143,7 +142,6 @@ public class Metamodel {
 		private final boolean unsettable;
 
 		private Field(Type owner, CtRole role, boolean derived, boolean unsettable) {
-			super();
 			this.owner = owner;
 			this.role = role;
 			this.derived = derived;
@@ -284,6 +282,7 @@ public class Metamodel {
 				.field(CtRole.ANNOTATION, false, false)
 				.field(CtRole.TYPE, false, false)
 				.field(CtRole.COMMENT, false, false)
+				.field(CtRole.IS_INFERRED, false, false)
 
 			));
 
@@ -483,6 +482,15 @@ public class Metamodel {
 				.field(CtRole.ANNOTATION, false, false)
 				.field(CtRole.BOUNDING_TYPE, false, false)
 
+			));
+
+			types.add(new Type("CtTypeMemberWildcardImportReference", spoon.reflect.reference.CtTypeMemberWildcardImportReference.class, spoon.support.reflect.reference.CtTypeMemberWildcardImportReferenceImpl.class, fm -> fm
+				.field(CtRole.NAME, true, true)
+				.field(CtRole.IS_IMPLICIT, true, true)
+				.field(CtRole.POSITION, false, false)
+				.field(CtRole.COMMENT, true, true)
+				.field(CtRole.ANNOTATION, true, true)
+				.field(CtRole.TYPE_REF, false, false)
 			));
 
 			types.add(new Type("CtThisAccess", spoon.reflect.code.CtThisAccess.class, spoon.support.reflect.code.CtThisAccessImpl.class, fm -> fm
@@ -726,6 +734,20 @@ public class Metamodel {
 
 			));
 
+			types.add(new Type("CtCompilationUnit", spoon.reflect.declaration.CtCompilationUnit.class, spoon.support.reflect.declaration.CtCompilationUnitImpl.class, fm -> fm
+				.field(CtRole.IS_IMPLICIT, false, false)
+				.field(CtRole.POSITION, true, true)
+				.field(CtRole.DECLARED_TYPE_REF, false, false)
+				.field(CtRole.DECLARED_TYPE, true, true)
+				.field(CtRole.DECLARED_MODULE_REF, false, false)
+				.field(CtRole.DECLARED_MODULE, true, true)
+				.field(CtRole.PACKAGE_DECLARATION, false, false)
+				.field(CtRole.DECLARED_IMPORT, false, false)
+				.field(CtRole.ANNOTATION, false, false)
+				.field(CtRole.COMMENT, false, false)
+
+			));
+
 			types.add(new Type("CtImport", spoon.reflect.declaration.CtImport.class, spoon.support.reflect.declaration.CtImportImpl.class, fm -> fm
 				.field(CtRole.IS_IMPLICIT, false, false)
 				.field(CtRole.POSITION, false, false)
@@ -735,10 +757,18 @@ public class Metamodel {
 
 			));
 
+			types.add(new Type("CtPackageDeclaration", spoon.reflect.declaration.CtPackageDeclaration.class, spoon.support.reflect.declaration.CtPackageDeclarationImpl.class, fm -> fm
+				.field(CtRole.IS_IMPLICIT, false, false)
+				.field(CtRole.POSITION, false, false)
+				.field(CtRole.PACKAGE_REF, false, false)
+				.field(CtRole.ANNOTATION, false, false)
+				.field(CtRole.COMMENT, false, false)
+
+			));
+
 			types.add(new Type("CtTypeParameterReference", spoon.reflect.reference.CtTypeParameterReference.class, spoon.support.reflect.reference.CtTypeParameterReferenceImpl.class, fm -> fm
 				.field(CtRole.NAME, false, false)
 				.field(CtRole.IS_SHADOW, false, false)
-				.field(CtRole.IS_UPPER, false, false)
 				.field(CtRole.IS_IMPLICIT, false, false)
 				.field(CtRole.MODIFIER, true, true)
 				.field(CtRole.COMMENT, true, true)
@@ -749,7 +779,6 @@ public class Metamodel {
 				.field(CtRole.PACKAGE_REF, false, false)
 				.field(CtRole.DECLARING_TYPE, false, false)
 				.field(CtRole.ANNOTATION, false, false)
-				.field(CtRole.BOUNDING_TYPE, false, false)
 
 			));
 
@@ -1059,6 +1088,7 @@ public class Metamodel {
 			types.add(new Type("CtLiteral", spoon.reflect.code.CtLiteral.class, spoon.support.reflect.code.CtLiteralImpl.class, fm -> fm
 				.field(CtRole.IS_IMPLICIT, false, false)
 				.field(CtRole.VALUE, false, false)
+				.field(CtRole.LITERAL_BASE, false, false)
 				.field(CtRole.POSITION, false, false)
 				.field(CtRole.ANNOTATION, false, false)
 				.field(CtRole.TYPE, false, false)
@@ -1104,7 +1134,7 @@ public class Metamodel {
 
 			types.add(new Type("CtTypeAccess", spoon.reflect.code.CtTypeAccess.class, spoon.support.reflect.code.CtTypeAccessImpl.class, fm -> fm
 				.field(CtRole.TYPE, true, true)
-				.field(CtRole.IS_IMPLICIT, false, false)
+				.field(CtRole.IS_IMPLICIT, true, false)
 				.field(CtRole.POSITION, false, false)
 				.field(CtRole.ANNOTATION, false, false)
 				.field(CtRole.CAST, false, false)

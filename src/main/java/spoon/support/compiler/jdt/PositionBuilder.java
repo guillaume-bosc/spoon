@@ -1,22 +1,10 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
-import org.eclipse.jdt.internal.compiler.CompilationResult;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.AbstractVariableDeclaration;
@@ -35,7 +23,6 @@ import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeParameter;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.ast.Wildcard;
-
 import spoon.SpoonException;
 import spoon.reflect.code.CtCase;
 import spoon.reflect.code.CtCatch;
@@ -56,8 +43,10 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.support.compiler.jdt.ContextBuilder.CastInfo;
 import spoon.support.reflect.CtExtendedModifier;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static spoon.support.compiler.jdt.JDTTreeBuilderQuery.getModifiers;
@@ -75,7 +64,7 @@ public class PositionBuilder {
 
 	SourcePosition buildPosition(int sourceStart, int sourceEnd) {
 		CompilationUnit cu = this.jdtTreeBuilder.getContextBuilder().compilationUnitSpoon;
-		final int[] lineSeparatorPositions = this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.compilationResult.lineSeparatorPositions;
+		final int[] lineSeparatorPositions = this.jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions();
 		return this.jdtTreeBuilder.getFactory().Core().createSourcePosition(cu, sourceStart, sourceEnd, lineSeparatorPositions);
 	}
 
@@ -86,11 +75,9 @@ public class PositionBuilder {
 			return SourcePosition.NOPOSITION;
 		}
 		CoreFactory cf = this.jdtTreeBuilder.getFactory().Core();
-		CompilationUnit cu = this.jdtTreeBuilder.getFactory().CompilationUnit().getOrCreate(new String(this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.getFileName()));
-		CompilationResult cr = this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.compilationResult;
-		int[] lineSeparatorPositions = cr.lineSeparatorPositions;
-		cu.setLineSeparatorPositions(lineSeparatorPositions);
-		char[] contents = cr.compilationUnit.getContents();
+		CompilationUnit cu = this.jdtTreeBuilder.getContextBuilder().compilationUnitSpoon;
+		int[] lineSeparatorPositions = jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions();
+		char[] contents = jdtTreeBuilder.getContextBuilder().getCompilationUnitContents();
 
 		int sourceStart = node.sourceStart;
 		int sourceEnd = node.sourceEnd;
@@ -235,6 +222,12 @@ public class PositionBuilder {
 				}
 			}
 
+			// Handle lambda parameters without explicit type
+			if (variableDeclaration instanceof Argument && variableDeclaration.type == null) {
+				declarationSourceStart = findPrevNonWhitespace(contents, 0, declarationSourceStart - 1);
+				declarationSourceEnd = findNextNonWhitespace(contents, contents.length - 1, declarationSourceEnd + 1);
+			}
+
 			if (modifiersSourceStart <= 0) {
 				modifiersSourceStart = findNextNonWhitespace(contents, contents.length - 1, declarationSourceStart);
 			}
@@ -272,26 +265,44 @@ public class PositionBuilder {
 			int bodyStart = typeDeclaration.bodyStart;
 			int bodyEnd = typeDeclaration.bodyEnd;
 
-			if (modifiersSourceStart <= 0) {
-				modifiersSourceStart = declarationSourceStart;
-			}
-			//look for start of first keyword before the type keyword e.g. "class". `sourceStart` points at first char of type name
-			int modifiersSourceEnd = findPrevNonWhitespace(contents, modifiersSourceStart - 1,
-										findPrevWhitespace(contents, modifiersSourceStart - 1,
-											findPrevNonWhitespace(contents, modifiersSourceStart - 1, sourceStart - 1)));
-			if (e instanceof CtModifiable) {
-				setModifiersPosition((CtModifiable) e, modifiersSourceStart, bodyStart);
-			}
-			if (modifiersSourceEnd < modifiersSourceStart) {
-				//there is no modifier
-				modifiersSourceEnd = modifiersSourceStart - 1;
-			}
+			int modifiersSourceEnd;
 			if (typeDeclaration.name.length == 0) {
-				//it is anonymous type, there is no name start/end
-				sourceEnd = sourceStart - 1;
-				if (contents[sourceStart] == '{') {
+				//it is anonymous type
+				if (contents[bodyStart] != '{') {
+					//adjust bodyStart of annonymous type in definition of enum value
+					if (bodyStart < 1 || contents[bodyStart - 1] != '{') {
+						throw new SpoonException("Cannot found body start at offset " + bodyStart + " of annonymous class with sources:\n" + new String(contents));
+					}
+					bodyStart--;
+				}
+				declarationSourceStart = modifiersSourceStart = sourceStart = bodyStart;
+				if (contents[bodyEnd] != '}') {
 					//adjust bodyEnd of annonymous type in definition of enum value
+					if (contents[bodyEnd + 1] != '}') {
+						throw new SpoonException("Cannot found body end at offset " + bodyEnd + " of annonymous class with sources:\n" + new String(contents));
+					}
 					bodyEnd++;
+				}
+				declarationSourceEnd = bodyEnd;
+				//there is no name of annonymous class
+				sourceEnd = sourceStart - 1;
+				//there are no modifiers of annonymous class
+				modifiersSourceEnd = modifiersSourceStart - 1;
+				bodyStart++;
+			} else {
+				if (modifiersSourceStart <= 0) {
+					modifiersSourceStart = declarationSourceStart;
+				}
+				//look for start of first keyword before the type keyword e.g. "class". `sourceStart` points at first char of type name
+				modifiersSourceEnd = findPrevNonWhitespace(contents, modifiersSourceStart - 1,
+											findPrevWhitespace(contents, modifiersSourceStart - 1,
+												findPrevNonWhitespace(contents, modifiersSourceStart - 1, sourceStart - 1)));
+				if (e instanceof CtModifiable) {
+					setModifiersPosition((CtModifiable) e, modifiersSourceStart, modifiersSourceEnd);
+				}
+				if (modifiersSourceEnd < modifiersSourceStart) {
+					//there is no modifier
+					modifiersSourceEnd = modifiersSourceStart - 1;
 				}
 			}
 
@@ -387,7 +398,6 @@ public class PositionBuilder {
 				sourceStart += fieldDeclaration.name.length;
 			}
 		} else if (node instanceof CaseStatement) {
-			CaseStatement caseStmt = (CaseStatement) node;
 			sourceEnd = findNextNonWhitespace(contents, contents.length - 1, sourceEnd + 1);
 			if (sourceEnd < 0) {
 				return handlePositionProblem("Unexpected end of file in CtCase on: " + sourceStart);
@@ -440,8 +450,7 @@ public class PositionBuilder {
 	private static final String CATCH = "catch";
 
 	SourcePosition buildPosition(CtCatch catcher) {
-		CompilationResult cr = this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.compilationResult;
-		int[] lineSeparatorPositions = cr.lineSeparatorPositions;
+		int[] lineSeparatorPositions = jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions();
 
 		CtTry tryElement = catcher.getParent(CtTry.class);
 		//offset after last bracket before catch
@@ -467,8 +476,7 @@ public class PositionBuilder {
 			//There are no statements. Keep origin position
 			return oldPosition;
 		}
-		CompilationResult cr = this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.compilationResult;
-		int[] lineSeparatorPositions = cr.lineSeparatorPositions;
+		int[] lineSeparatorPositions = this.jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions();
 
 		int bodyStart = child.getPosition().getSourceEnd() + 1;
 		int bodyEnd = statements.get(statements.size() - 1).getPosition().getSourceEnd();
@@ -510,25 +518,41 @@ public class PositionBuilder {
 
 	private void setModifiersPosition(CtModifiable e, int start, int end) {
 		CoreFactory cf = this.jdtTreeBuilder.getFactory().Core();
-		CompilationUnit cu = this.jdtTreeBuilder.getFactory().CompilationUnit().getOrCreate(new String(this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.getFileName()));
-		CompilationResult cr = this.jdtTreeBuilder.getContextBuilder().compilationunitdeclaration.compilationResult;
-		char[] contents = cr.compilationUnit.getContents();
+		CompilationUnit cu = this.jdtTreeBuilder.getContextBuilder().compilationUnitSpoon;
+		char[] contents = jdtTreeBuilder.getContextBuilder().getCompilationUnitContents();
 
 		Set<CtExtendedModifier> modifiers = e.getExtendedModifiers();
-		String modifierContent = String.valueOf(contents, start, end - start + 1);
+		Map<String, CtExtendedModifier> explicitModifiersByName = new HashMap<>();
 		for (CtExtendedModifier modifier: modifiers) {
 			if (modifier.isImplicit()) {
 				modifier.setPosition(cf.createPartialSourcePosition(cu));
 				continue;
 			}
-			int index = modifierContent.indexOf(modifier.getKind().toString());
-			if (index == -1) {
-				throw new SpoonException("Explicit modifier not found");
+			if (explicitModifiersByName.put(modifier.getKind().toString(), modifier) != null) {
+				throw new SpoonException("The modifier " + modifier.getKind().toString() + " found twice");
 			}
-			int indexStart = index + start;
-			int indexEnd = indexStart + modifier.getKind().toString().length() - 1;
+		}
 
-			modifier.setPosition(cf.createSourcePosition(cu, indexStart, indexEnd, cr.lineSeparatorPositions));
+		//move end after the last char
+		end++;
+		while (start < end && explicitModifiersByName.size() > 0) {
+			int o1 = findNextNonWhitespace(contents, end - 1, start);
+			if (o1 == -1) {
+				break;
+			}
+			int o2 = findNextWhitespace(contents, end - 1, o1);
+			if (o2 == -1) {
+				o2 = end;
+			}
+			String modifierName = String.valueOf(contents, o1, o2 - o1);
+			CtExtendedModifier modifier = explicitModifiersByName.remove(modifierName);
+			if (modifier != null) {
+				modifier.setPosition(cf.createSourcePosition(cu, o1, o2 - 1, jdtTreeBuilder.getContextBuilder().getCompilationUnitLineSeparatorPositions()));
+			}
+			start = o2;
+		}
+		if (explicitModifiersByName.size() > 0) {
+			throw new SpoonException("Position of CtExtendedModifiers: [" + String.join(", ", explicitModifiersByName.keySet()) + "] not found in " + String.valueOf(contents, start, end - start));
 		}
 	}
 
@@ -545,6 +569,15 @@ public class PositionBuilder {
 					//TODO handle comments correctly here. E.g. List<T /*ccc*/ >
 					sourceEnd = findNextNonWhitespace(contents, contents.length - 1, getSourceEndOfTypeReference(contents, tr, tr.sourceEnd) + 1);
 				}
+			} else {
+				//SomeType<>
+				int startIdx = findNextNonWhitespace(contents, contents.length - 1, sourceEnd + 1);
+				if (startIdx != -1 && contents[startIdx] == '<') {
+					int endIdx = findNextNonWhitespace(contents, contents.length - 1, startIdx + 1);
+					if (endIdx != -1 && contents[endIdx] == '>') {
+						sourceEnd = endIdx;
+					}
+				}
 			}
 		}
 		if (node instanceof Wildcard) {
@@ -558,11 +591,11 @@ public class PositionBuilder {
 
 	/**
 	 * @return index of first character `expectedChar`, searching forward..
-	 * Can return 'off' if it `expectedChar`.
+	 * Can return 'off' if it is `expectedChar`. returns -1 if not found
 	 * Note: all kinds of java comments are understood as whitespace.
 	 * The search must start out of comment or on the first character of the comment
 	 */
-	private int findNextChar(char[] contents, int maxOff, int off, char expectedChar) {
+	static int findNextChar(char[] contents, int maxOff, int off, char expectedChar) {
 		while ((off = findNextNonWhitespace(contents, maxOff, off)) >= 0) {
 			if (contents[off] == expectedChar) {
 				return off;
@@ -579,13 +612,16 @@ public class PositionBuilder {
 	 * Note: all kinds of java comments are understood as whitespace too.
 	 * The search must start out of comment or on the first character of the comment
 	 */
-	private int findNextNonWhitespace(char[] content, int maxOff, int off) {
+	static int findNextNonWhitespace(char[] content, int maxOff, int off) {
+		return findNextNonWhitespace(true, content, maxOff, off);
+	}
+	static int findNextNonWhitespace(boolean commentIsWhiteSpace, char[] content, int maxOff, int off) {
 		maxOff = Math.min(maxOff, content.length - 1);
 		while (off >= 0 && off <= maxOff) {
 			char c = content[off];
 			if (Character.isWhitespace(c) == false) {
 				//non whitespace found
-				int endOfCommentOff = getEndOfComment(content, maxOff, off);
+				int endOfCommentOff = commentIsWhiteSpace ? getEndOfComment(content, maxOff, off) : -1;
 				if (endOfCommentOff == -1) {
 					//it is not a comment. Finish
 					return off;
@@ -604,7 +640,7 @@ public class PositionBuilder {
 	 * Can return `off` if it is already a non whitespace.
 	 * Note: all kinds of java comments are understood as whitespace too. Then it returns offset of the first character of the comment
 	 */
-	private int findNextWhitespace(char[] content, int maxOff, int off) {
+	static int findNextWhitespace(char[] content, int maxOff, int off) {
 		maxOff = Math.min(maxOff, content.length - 1);
 		while (off >= 0 && off <= maxOff) {
 			char c = content[off];
@@ -621,7 +657,7 @@ public class PositionBuilder {
 	 * @return index of first non whitespace char, searching backward. Can return `off` if it is already a non whitespace.
 	 * Note: all kinds of java comments are understood as whitespace too. Then it returns offset of the first non whitespace character before the comment
 	 */
-	int findPrevNonWhitespace(char[] content, int minOff, int off) {
+	static int findPrevNonWhitespace(char[] content, int minOff, int off) {
 		minOff = Math.max(0, minOff);
 		while (off >= minOff) {
 			char c = content[off];
@@ -645,7 +681,7 @@ public class PositionBuilder {
 	 * Note: all kinds of java comments are understood as whitespace too. Then it returns offset of the last comment character.
 	 * in case of line comment it returns last character of EOL which ends the comment
 	 */
-	private int findPrevWhitespace(char[] content, int minOff, int off) {
+	static int findPrevWhitespace(char[] content, int minOff, int off) {
 		minOff = Math.max(0, minOff);
 		while (off >= minOff) {
 			char c = content[off];
@@ -661,7 +697,7 @@ public class PositionBuilder {
 	 * @return if the off points at start of comment then it returns offset which points on last character of the comment
 	 * if the off does not point at start of comment then it returns -1
 	 */
-	private int getEndOfComment(char[] content, int maxOff, int off) {
+	static int getEndOfComment(char[] content, int maxOff, int off) {
 		maxOff = Math.min(maxOff, content.length - 1);
 		if (off + 1 <= maxOff) {
 			if (content[off] == '/' && content[off + 1] == '*') {
@@ -691,7 +727,7 @@ public class PositionBuilder {
 					if (content[off] == '\r') {
 						//we have found end of this comment
 						//skip windows \n too if any
-						if (content[off] == '\n') {
+						if (off < maxOff && content[off + 1] == '\n') {
 							off++;
 						}
 						return off;
@@ -708,7 +744,7 @@ public class PositionBuilder {
 	 * @return if the off points at end of comment then it returns offset which points on first character of the comment
 	 * if the off does not point at the end of comment then it returns -1
 	 */
-	private int getStartOfComment(char[] content, int minOff, int off) {
+	static int getStartOfComment(char[] content, int minOff, int off) {
 		if (off < 2) {
 			//there cannot start comment
 			return -1;

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.pattern.internal.node;
 
@@ -34,7 +23,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 			TobeMatched tmp = matchAllWith(targets);
 			if (tmp == null) {
 				if (isMandatory) {
-					//this mandatory valueResolver didn't matched
+					//this mandatory valueResolver didn't match
 					return null;
 				}
 				//no match - OK, it was optional
@@ -49,7 +38,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 		while (isMandatory(targets.getParameters())) {
 			TobeMatched tmp = matchAllWith(targets);
 			if (tmp == null) {
-				//this mandatory valueResolver didn't matched
+				//this mandatory valueResolver didn't match
 				return null;
 			}
 			//check whether we have to match next
@@ -64,6 +53,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 		//then continue optional targets
 		return matchOptionalTargets(targets, next);
 	}
+
 	private TobeMatched matchOptionalTargets(TobeMatched targets, Matchers next) {
 		if (isTryNextMatch(targets.getParameters()) == false) {
 			//the `matcher` has all values. Match next
@@ -82,7 +72,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 					}
 				}
 			}
-			//greedy matching with current nodeSubstRequest didn't passed. Try to match using remaining templates
+			//greedy matching with current nodeSubstRequest didn't pass. Try to match using remaining templates
 			return next.matchAllWith(targets);
 		}
 		case RELUCTANT: {
@@ -92,7 +82,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 					return match;
 				}
 			}
-			//reluctant matching didn't passed on next elements. Try to match using this matcher
+			//reluctant matching didn't pass on next elements. Try to match using this matcher
 			TobeMatched match = matchAllWith(targets);
 			if (match == null) {
 				//nothing matched
@@ -108,7 +98,7 @@ abstract class AbstractRepeatableMatcher extends AbstractNode implements Repeata
 				TobeMatched tmp = matchAllWith(targets);
 				if (tmp == null) {
 					if (isMandatory(targets.getParameters())) {
-						//this mandatory valueResolver didn't matched
+						//this mandatory valueResolver didn't match
 						return null;
 					}
 					//it was optional. Ignore this valueResolver and continue with next

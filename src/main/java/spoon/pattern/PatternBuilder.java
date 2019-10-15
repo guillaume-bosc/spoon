@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.pattern;
 
@@ -69,7 +58,7 @@ public class PatternBuilder {
 	 * @param patternModel a List of Spoon AST nodes, which represents a template of to be generated or to be matched code
 	 * @return new instance of {@link PatternBuilder}
 	 */
-	public static PatternBuilder create(List<CtElement> patternModel) {
+	public static PatternBuilder create(List<? extends CtElement> patternModel) {
 		return new PatternBuilder(patternModel);
 	}
 
@@ -111,12 +100,12 @@ public class PatternBuilder {
 		}
 	}
 
-	protected PatternBuilder(List<CtElement> template) {
-		this.templateTypeRef = getDeclaringTypeRef(template);
-		this.patternModel = Collections.unmodifiableList(new ArrayList<>(template));
+	protected PatternBuilder(List<? extends CtElement> template) {
 		if (template == null) {
 			throw new SpoonException("Cannot create a Pattern from an null model");
 		}
+		this.templateTypeRef = getDeclaringTypeRef(template);
+		this.patternModel = Collections.unmodifiableList(new ArrayList<>(template));
 		this.valueConvertor = new ValueConvertorImpl();
 		patternNodes = ElementNode.create(this.patternModel, patternElementToSubstRequests);
 		patternQuery = new PatternBuilder.PatternQuery(getFactory().Query(), patternModel);
@@ -127,7 +116,7 @@ public class PatternBuilder {
 		}
 	}
 
-	private CtTypeReference<?> getDeclaringTypeRef(List<CtElement> template) {
+	private CtTypeReference<?> getDeclaringTypeRef(List<? extends CtElement> template) {
 		CtType<?> type = null;
 		for (CtElement ctElement : template) {
 			CtType t;
@@ -204,7 +193,7 @@ public class PatternBuilder {
 		if (newNode == null) {
 			throw new SpoonException("Removing of Node is not supported");
 		}
-		handleConflict(conflictMode, oldNode, newNode, (tobeUsedNode) -> {
+		handleConflict(conflictMode, oldNode, newNode, tobeUsedNode -> {
 			if (patternNodes.replaceNode(oldNode, tobeUsedNode) == false) {
 				if (conflictMode == ConflictResolutionMode.KEEP_OLD_NODE) {
 					//The parent of oldNode was already replaced. OK - Keep that parent old node

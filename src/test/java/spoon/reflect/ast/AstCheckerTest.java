@@ -1,7 +1,25 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.reflect.ast;
 
 import org.junit.Test;
 import spoon.Launcher;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.reference.CtExecutableReference;
 import spoon.support.modelobs.FineModelChangeListener;
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtFieldRead;
@@ -30,10 +48,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
+
 public class AstCheckerTest {
 
 	@Test
-	public void testAvoidSetCollectionSavedOnAST() throws Exception {
+	public void testExecutableReference() {
+
+		Launcher l = new Launcher();
+		l.getEnvironment().setNoClasspath(true);
+		l.addInputResource("./src/test/resources/noclasspath/A4.java");
+		l.buildModel();
+
+		CtClass<Object> klass = l.getFactory().Class().get("A4");
+		CtMethod<?> bMethod = klass.getMethodsByName("b").get(0);
+		CtMethod<?> cMethod = klass.getMethodsByName("c").get(0);
+		List<CtExecutableReference> elements = cMethod.getElements(new TypeFilter<>(CtExecutableReference.class));
+		CtExecutableReference methodRef = elements.stream().filter(e -> e.getSimpleName().equals("b")).findFirst().get();
+
+		//contract: Executable reference declaring type and return type match those of the actual executable
+		assertEquals(bMethod.getType().getTypeDeclaration(),methodRef.getType().getTypeDeclaration());
+		assertEquals(bMethod.getDeclaringType(),methodRef.getDeclaringType().getTypeDeclaration());
+	}
+
+	@Test
+	public void testAvoidSetCollectionSavedOnAST() {
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.addInputResource("src/main/java");
@@ -60,8 +99,7 @@ public class AstCheckerTest {
 					return false;
 				}
 				boolean isDataStructure = false;
-				for (int i = 0; i < collectionsRef.size(); i++) {
-					CtTypeReference<?> ctTypeReference = collectionsRef.get(i);
+				for (CtTypeReference<?> ctTypeReference : collectionsRef) {
 					if (element.getType().isSubtypeOf(ctTypeReference)) {
 						isDataStructure = true;
 						break;
@@ -75,7 +113,7 @@ public class AstCheckerTest {
 				return simpleName.startsWith("add") || simpleName.startsWith("remove") || simpleName.startsWith("put");
 			}
 		});
-		if (invocations.size() > 0) {
+		if (!invocations.isEmpty()) {
 			final String error = invocations.stream() //
 					.sorted(new CtLineElementComparator()) //
 					.map(i -> "see " + i.getPosition().getFile().getAbsoluteFile() + " at " + i.getPosition().getLine()) //
@@ -85,7 +123,7 @@ public class AstCheckerTest {
 	}
 
 	@Test
-	public void testPushToStackChanges() throws Exception {
+	public void testPushToStackChanges() {
 		// contract: setters should check the given parameters against NPE and the ModelChangeListener must be called!
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
@@ -124,13 +162,16 @@ public class AstCheckerTest {
 					"CtElementImpl#setValueByRole",
 					"CtTypeParameterReferenceImpl#addBound",
 					"CtTypeParameterReferenceImpl#removeBound",
-					"CtTypeParameterReferenceImpl#setBounds",
+					"CtWildcardReferenceImpl#setBounds",
 					"CtModuleImpl#addUsedService",
 					"CtModuleImpl#addExportedPackage",
 					"CtModuleImpl#addOpenedPackage",
 					"CtModuleImpl#addRequiredModule",
 					"CtModuleImpl#addProvidedService",
-					"CtArrayTypeReferenceImpl#setSimpleName"
+					"CtArrayTypeReferenceImpl#setSimpleName",
+					"CtCompilationUnitImpl#addDeclaredType",
+					"CtCompilationUnitImpl#setFile",
+					"CtCompilationUnitImpl#setLineSeparatorPositions"
 			);
 		}
 
@@ -142,7 +183,7 @@ public class AstCheckerTest {
 				return false;
 			}
 			return candidate.getBody() != null //
-					&& candidate.getParameters().size() != 0 //
+					&& !candidate.getParameters().isEmpty() //
 					&& candidate.hasModifier(ModifierKind.PUBLIC) //
 					&& (candidate.getSimpleName().startsWith("add")
 						|| candidate.getSimpleName().startsWith("set")
@@ -163,7 +204,7 @@ public class AstCheckerTest {
 
 		private boolean isSurcharged(CtMethod<?> candidate) {
 			CtBlock<?> block = candidate.getBody();
-			if (block.getStatements().size() == 0) {
+			if (block.getStatements().isEmpty()) {
 				return false;
 			}
 			CtInvocation potentialDelegate;
@@ -183,7 +224,7 @@ public class AstCheckerTest {
 				return false;
 			}
 			CtExecutable declaration = potentialDelegate.getExecutable().getDeclaration();
-			if (declaration == null || !(declaration instanceof CtMethod)) {
+			if (!(declaration instanceof CtMethod)) {
 				return false;
 			}
 			// check if the invocation has a model change listener
@@ -191,7 +232,7 @@ public class AstCheckerTest {
 		}
 
 		private boolean isDelegateMethod(CtMethod<?> candidate) {
-			if (candidate.getBody().getStatements().size() == 0) {
+			if (candidate.getBody().getStatements().isEmpty()) {
 				return false;
 			}
 			if (!(candidate.getBody().getStatement(0) instanceof CtIf)) {
@@ -217,7 +258,7 @@ public class AstCheckerTest {
 		}
 
 		private boolean isUnsupported(CtBlock<?> body) {
-			return body.getStatements().size() != 0 //
+			return !body.getStatements().isEmpty() //
 					&& body.getStatements().get(0) instanceof CtThrow //
 					&& "UnsupportedOperationException".equals(((CtThrow) body.getStatements().get(0)).getThrownExpression().getType().getSimpleName());
 		}
@@ -248,12 +289,12 @@ public class AstCheckerTest {
 		}
 
 		private boolean hasPushToStackInvocation(CtBlock<?> body) {
-			return body.getElements(new TypeFilter<CtInvocation<?>>(CtInvocation.class) {
+			return !body.getElements(new TypeFilter<CtInvocation<?>>(CtInvocation.class) {
 				@Override
 				public boolean matches(CtInvocation<?> element) {
 					return FineModelChangeListener.class.getSimpleName().equals(element.getExecutable().getDeclaringType().getSimpleName()) && super.matches(element);
 				}
-			}).size() > 0;
+			}).isEmpty();
 		}
 
 		private void process(CtMethod<?> element) {

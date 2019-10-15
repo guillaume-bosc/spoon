@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.declaration;
 
@@ -26,15 +15,16 @@ import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.declaration.CtImportKind;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
+import spoon.reflect.visitor.CtImportVisitor;
 import spoon.reflect.visitor.CtVisitor;
-import spoon.support.reflect.reference.CtWildcardStaticTypeMemberReferenceImpl;
+import spoon.support.reflect.reference.CtTypeMemberWildcardImportReferenceImpl;
 
 public class CtImportImpl extends CtElementImpl implements CtImport {
 	@MetamodelPropertyField(role = CtRole.IMPORT_REFERENCE)
 	private CtReference localReference;
 
 	public CtImportImpl() {
-		super();
 	}
 
 	@Override
@@ -49,7 +39,7 @@ public class CtImportImpl extends CtElementImpl implements CtImport {
 			return CtImportKind.METHOD;
 		} else if (this.localReference instanceof CtPackageReference) {
 			return CtImportKind.ALL_TYPES;
-		} else if (this.localReference instanceof CtWildcardStaticTypeMemberReferenceImpl) {
+		} else if (this.localReference instanceof CtTypeMemberWildcardImportReferenceImpl) {
 			return CtImportKind.ALL_STATIC_MEMBERS;
 		} else if (this.localReference instanceof CtTypeReference) {
 			return CtImportKind.TYPE;
@@ -79,7 +69,34 @@ public class CtImportImpl extends CtElementImpl implements CtImport {
 	}
 
 	@Override
-	public CtImport clone() {
-		return (CtImport) super.clone();
+	public void accept(CtImportVisitor visitor) {
+		switch (getImportKind()) {
+		case TYPE:
+			visitor.visitTypeImport((CtTypeReference<?>) localReference);
+			break;
+
+		case METHOD:
+			visitor.visitMethodImport((CtExecutableReference<?>) localReference);
+			break;
+
+		case FIELD:
+			visitor.visitFieldImport((CtFieldReference<?>) localReference);
+			break;
+
+		case ALL_TYPES:
+			visitor.visitAllTypesImport((CtPackageReference) localReference);
+			break;
+
+		case ALL_STATIC_MEMBERS:
+			visitor.visitAllStaticMembersImport((CtTypeMemberWildcardImportReference) localReference);
+			break;
+		default:
+			throw new SpoonException("Unexpected import kind: " + getImportKind());
+		}
+	}
+
+	@Override
+	public CtImportImpl clone() {
+		return (CtImportImpl) super.clone();
 	}
 }

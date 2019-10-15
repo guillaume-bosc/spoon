@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.declaration;
 
@@ -110,10 +99,18 @@ public interface CtTypeInformation {
 	boolean isAnnotationType();
 
 	/**
-	 * Returns true if it refers to a type parameter (ie not a concrete class, eg "T foo"). It can refer to it directly (eg T), or indirectly (eg List&lt;T&gt;, or Set&lt;List&lt;T&gt;&gt;).
+	 * Returns true if it is not a concrete, resolvable class, it if refers to a type parameter directly or indirectly.
+	 * Direct: "T foo" isGenerics returns true.
+	 * Indirect: List&lt;T&gt;, or Set&lt;List&lt;T&gt;&gt; isGenerics returns true
 	 */
 	@DerivedProperty
 	boolean isGenerics();
+
+	/**
+	 * Returns true if it has any type parameter (generic or not).
+	 */
+	@DerivedProperty
+	boolean isParameterized();
 
 	/**
 	 * Returns true if the referenced type is a sub-type of the given type.
@@ -186,4 +183,10 @@ public interface CtTypeInformation {
 	 */
 	@DerivedProperty
 	CtTypeReference<?> getTypeErasure();
+
+
+	/**
+	 * @return true if this represents an array e.g. Object[] or int[]
+	 */
+	boolean isArray();
 }

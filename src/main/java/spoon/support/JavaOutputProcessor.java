@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support;
 
@@ -56,7 +45,7 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 	}
 
 	/**
-	 * usedful for testing
+	 * Such processor will use printer created by {@link Environment#createPrettyPrinter()}
 	 */
 	public JavaOutputProcessor() {
 	}
@@ -67,13 +56,19 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 	}
 
 	public PrettyPrinter getPrinter() {
+		if (printer == null) {
+			//create printer using CURRENT Environment settings
+			return getFactory().getEnvironment().createPrettyPrinter();
+		}
 		return printer;
 	}
 
+	@Override
 	public List<File> getCreatedFiles() {
 		return printedFiles;
 	}
 
+	@Override
 	public File getOutputDirectory() {
 		return this.getEnvironment().getSourceOutputDirectory();
 	}
@@ -115,6 +110,7 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 		List<CtType<?>> toBePrinted = new ArrayList<>();
 		toBePrinted.add(element);
 
+		PrettyPrinter printer = getPrinter();
 		printer.calculate(cu, toBePrinted);
 
 
@@ -148,6 +144,7 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 	 * Creates a source file for each processed top-level type and pretty prints
 	 * its contents.
 	 */
+	@Override
 	public void process(CtNamedElement nameElement) {
 		if (nameElement instanceof CtType && ((CtType) nameElement).isTopLevel()) {
 			createJavaFile((CtType<?>) nameElement);
@@ -165,7 +162,7 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 			printedFiles.add(packageAnnot);
 		}
 		try (PrintStream stream = new PrintStream(packageAnnot)) {
-			stream.println(printer.printPackageInfo(pack));
+			stream.println(getPrinter().printPackageInfo(pack));
 		} catch (FileNotFoundException e) {
 			Launcher.LOGGER.error(e.getMessage(), e);
 		}
@@ -178,7 +175,7 @@ public class JavaOutputProcessor extends AbstractProcessor<CtNamedElement> imple
 				printedFiles.add(moduleFile);
 			}
 			try (PrintStream stream = new PrintStream(moduleFile)) {
-				stream.println(printer.printModuleInfo(module));
+				stream.println(getPrinter().printModuleInfo(module));
 			} catch (FileNotFoundException e) {
 				Launcher.LOGGER.error(e.getMessage(), e);
 			}

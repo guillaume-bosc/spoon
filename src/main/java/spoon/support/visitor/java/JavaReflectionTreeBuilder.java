@@ -1,21 +1,11 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.visitor.java;
 
+import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtAnnotationMethod;
 import spoon.reflect.declaration.CtAnnotationType;
@@ -41,6 +31,7 @@ import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtWildcardReference;
+import spoon.support.util.RtHelper;
 import spoon.support.visitor.java.internal.AnnotationRuntimeBuilderContext;
 import spoon.support.visitor.java.internal.ExecutableRuntimeBuilderContext;
 import spoon.support.visitor.java.internal.PackageRuntimeBuilderContext;
@@ -63,6 +54,7 @@ import java.lang.reflect.WildcardType;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Set;
 
 /**
  * Builds Spoon model from class file using the reflection api. The Spoon model
@@ -210,6 +202,7 @@ public class JavaReflectionTreeBuilder extends JavaReflectionVisitorImpl {
 				field.setSimpleName(ctMethod.getSimpleName());
 				field.setModifiers(ctMethod.getModifiers());
 				field.setType(ctMethod.getType());
+				field.setShadow(true);
 				ctAnnotationType.addMethod(field);
 			}
 		});
@@ -290,6 +283,20 @@ public class JavaReflectionTreeBuilder extends JavaReflectionVisitorImpl {
 		final CtField<Object> ctField = factory.Core().createField();
 		ctField.setSimpleName(field.getName());
 		setModifier(ctField, field.getModifiers(), field.getDeclaringClass());
+
+		// we set the value of the shadow field if it is a public and static primitive value
+		try {
+			Set<ModifierKind> modifiers = RtHelper.getModifiers(field.getModifiers());
+			if (modifiers.contains(ModifierKind.STATIC)
+					&& modifiers.contains(ModifierKind.PUBLIC)
+					&& (field.getType().isPrimitive() || String.class.isAssignableFrom(field.getType()))
+				) {
+				CtLiteral<Object> defaultExpression = factory.createLiteral(field.get(null));
+				ctField.setDefaultExpression(defaultExpression);
+			}
+		} catch (IllegalAccessException e) {
+			// ignore
+		}
 
 		enter(new VariableRuntimeBuilderContext(ctField));
 		super.visitField(field);
@@ -399,14 +406,6 @@ public class JavaReflectionTreeBuilder extends JavaReflectionVisitorImpl {
 		ctTypeReference.setSimpleName(((Class) type.getRawType()).getSimpleName());
 
 		RuntimeBuilderContext context = new TypeReferenceRuntimeBuilderContext(type, ctTypeReference) {
-//			@Override
-//			public void addTypeReference(CtRole role, CtTypeReference<?> typeReference) {
-//				ctTypeReference.setSimpleName(typeReference.getSimpleName());
-//				ctTypeReference.setPackage(typeReference.getPackage());
-//				ctTypeReference.setDeclaringType(typeReference.getDeclaringType());
-//				ctTypeReference.setActualTypeArguments(typeReference.getActualTypeArguments());
-//				ctTypeReference.setAnnotations(typeReference.getAnnotations());
-//			}
 
 			@Override
 			public void addType(CtType<?> aType) {

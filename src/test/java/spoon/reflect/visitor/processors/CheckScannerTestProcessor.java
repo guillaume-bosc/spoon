@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2006-2015 INRIA and contributors
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
  * Spoon - http://spoon.gforge.inria.fr/
  *
  * This software is governed by the CeCILL-C License under French law and
@@ -14,7 +14,6 @@
  * The fact that you are presently reading this means that you have had
  * knowledge of the CeCILL-C license and that you accept its terms.
  */
-
 package spoon.reflect.visitor.processors;
 
 import spoon.processing.AbstractProcessor;
@@ -31,7 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class CheckScannerTestProcessor extends AbstractProcessor<CtClass<?>> {
-	private final List<String> excludingClasses = Arrays.asList("CompilationUnitVirtualImpl", "CtWildcardStaticTypeMemberReferenceImpl", "InvisibleArrayConstructorImpl");
+	private final List<String> excludingClasses = Arrays.asList("CompilationUnitVirtualImpl", "CtTypeMemberWildcardImportReferenceImpl", "InvisibleArrayConstructorImpl");
 
 	@Override
 	public boolean isToBeProcessed(CtClass<?> candidate) {

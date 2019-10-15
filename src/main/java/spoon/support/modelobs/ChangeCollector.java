@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.modelobs;
 
@@ -50,6 +39,26 @@ public class ChangeCollector {
 			return ((ChangeListener) mcl).getChangeCollector();
 		}
 		return null;
+	}
+
+	/**
+	 * Allows to run code using change collector switched off.
+	 * It means that any change of spoon model done by the `runnable` is ignored by the change collector.
+	 * Note: it is actually needed to wrap CtElement#toString() calls which sometime modifies spoon model.
+	 * See TestSniperPrinter#testPrintChangedReferenceBuilder()
+	 * @param env Spoon environment
+	 * @param runnable the code to be run
+	 */
+	public static void runWithoutChangeListener(Environment env, Runnable runnable) {
+		FineModelChangeListener mcl = env.getModelChangeListener();
+		if (mcl instanceof ChangeListener) {
+			env.setModelChangeListener(new EmptyModelChangeListener());
+			try {
+				runnable.run();
+			} finally {
+				env.setModelChangeListener(mcl);
+			}
+		}
 	}
 
 	/**
@@ -96,7 +105,7 @@ public class ChangeCollector {
 					checkedRole = scanner.getScannedRole();
 				}
 				if (changes.contains(checkedRole)) {
-					//we already know that som echild of `checkedRole` attribute is modified. Skip others
+					//we already know that some child of `checkedRole` attribute is modified. Skip others
 					return ScanningMode.SKIP_ALL;
 				}
 				if (elementToChangeRole.containsKey(element)) {
@@ -118,6 +127,9 @@ public class ChangeCollector {
 	}
 
 	private static class Scanner extends EarlyTerminatingScanner<Void> {
+		Scanner() {
+			setVisitCompilationUnitContent(true);
+		}
 		CtRole getScannedRole() {
 			return scannedRole;
 		}

@@ -1,22 +1,12 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.declaration;
 
 import spoon.reflect.annotations.MetamodelPropertyField;
+import spoon.reflect.cu.position.NoSourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtModule;
 import spoon.reflect.declaration.CtPackage;
@@ -31,10 +21,6 @@ import spoon.support.util.ModelSet;
 
 import java.util.Set;
 
-import static spoon.reflect.path.CtRole.IS_SHADOW;
-import static spoon.reflect.path.CtRole.SUB_PACKAGE;
-import static spoon.reflect.path.CtRole.CONTAINED_TYPE;
-
 /**
  * The implementation for {@link spoon.reflect.declaration.CtPackage}.
  *
@@ -43,7 +29,7 @@ import static spoon.reflect.path.CtRole.CONTAINED_TYPE;
 public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 	private static final long serialVersionUID = 1L;
 
-	@MetamodelPropertyField(role = SUB_PACKAGE)
+	@MetamodelPropertyField(role = CtRole.SUB_PACKAGE)
 	protected ModelSet<CtPackage> packs = new ModelSet<CtPackage>(QualifiedNameComparator.INSTANCE) {
 		private static final long serialVersionUID = 1L;
 		@Override
@@ -53,7 +39,7 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 
 		@Override
 		protected CtRole getRole() {
-			return SUB_PACKAGE;
+			return CtRole.SUB_PACKAGE;
 		}
 
 		@Override
@@ -80,7 +66,7 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 		}
 	};
 
-	@MetamodelPropertyField(role = CONTAINED_TYPE)
+	@MetamodelPropertyField(role = CtRole.CONTAINED_TYPE)
 	private ModelSet<CtType<?>> types = new ModelSet<CtType<?>>(QualifiedNameComparator.INSTANCE) {
 		private static final long serialVersionUID = 1L;
 		@Override
@@ -94,7 +80,6 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 	};
 
 	public CtPackageImpl() {
-		super();
 	}
 
 	@Override
@@ -223,7 +208,7 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 		return getQualifiedName();
 	}
 
-	@MetamodelPropertyField(role = IS_SHADOW)
+	@MetamodelPropertyField(role = CtRole.IS_SHADOW)
 	boolean isShadow;
 
 	@Override
@@ -233,7 +218,7 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 
 	@Override
 	public <E extends CtShadowable> E setShadow(boolean isShadow) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, IS_SHADOW, isShadow, this.isShadow);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.IS_SHADOW, isShadow, this.isShadow);
 		this.isShadow = isShadow;
 		return (E) this;
 	}
@@ -248,4 +233,13 @@ public class CtPackageImpl extends CtNamedElementImpl implements CtPackage {
 		return TOP_LEVEL_PACKAGE_NAME.equals(getSimpleName());
 	}
 
+	@Override
+	public boolean hasPackageInfo() {
+		return !(getPosition() instanceof NoSourcePosition);
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return getPackages().isEmpty() && getTypes().isEmpty();
+	}
 }

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor.chain;
 
@@ -107,7 +96,7 @@ public class CtQueryImpl implements CtQuery {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <R extends Object> List<R> list() {
+	public <R> List<R> list() {
 		return (List<R>) list(Object.class);
 	}
 
@@ -370,7 +359,9 @@ public class CtQueryImpl implements CtQuery {
 				return true;
 			}
 			if (expectedClass != null && expectedClass.isAssignableFrom(input.getClass()) == false) {
-				log(this, input.getClass().getName() + " cannot be cast to " + expectedClass.getName(), input);
+				if (isLogging()) {
+					log(this, input.getClass().getName() + " cannot be cast to " + expectedClass.getName(), input);
+				}
 				return false;
 			}
 			return true;
@@ -388,7 +379,7 @@ public class CtQueryImpl implements CtQuery {
 		protected void onCallbackSet(String stackClass, String stackMethodName, Class<?> callbackClass, String callbackMethod, int nrOfParams, int idxOfInputParam) {
 			this.cceStacktraceClass = stackClass;
 			this.cceStacktraceMethodName = stackMethodName;
-			if (callbackClass.getName().indexOf("$$Lambda$") >= 0) {
+			if (callbackClass.getName().contains("$$Lambda$")) {
 				//lambda expressions does not provide runtime information about type of input parameter
 				//clear it now. We can detect input type from first ClassCastException
 				this.expectedClass = null;
@@ -397,7 +388,7 @@ public class CtQueryImpl implements CtQuery {
 				if (method == null) {
 					throw new SpoonException("The method " + callbackMethod + " with one parameter was not found on the class " + callbackClass.getName());
 				}
-				this.expectedClass = (Class<?>) method.getParameterTypes()[idxOfInputParam];
+				this.expectedClass = method.getParameterTypes()[idxOfInputParam];
 			}
 		}
 
@@ -414,9 +405,6 @@ public class CtQueryImpl implements CtQuery {
 			if (indexOfCallerInStack < 0) {
 				//this is an exotic JVM, where we cannot detect type of parameter of Lambda expression
 				//Silently ignore this CCE, which was may be expected or may be problem in client's code.
-//				if (Launcher.LOGGER.isDebugEnabled()) {
-//					Launcher.LOGGER.debug("ClassCastException thrown by client's code or Query engine ...", e);
-//				}
 				return;
 			}
 			//we can detect whether CCE was thrown in client's code (unexpected - must be rethrown) or Query engine (expected - has to be ignored)
@@ -464,7 +452,6 @@ public class CtQueryImpl implements CtQuery {
 	 */
 	private class OutputFunctionWrapper extends AbstractStep {
 		OutputFunctionWrapper() {
-			super();
 			localFailurePolicy = QueryFailurePolicy.IGNORE;
 		}
 		@Override
@@ -495,7 +482,6 @@ public class CtQueryImpl implements CtQuery {
 
 		@SuppressWarnings("unchecked")
 		LazyFunctionWrapper(CtConsumableFunction<?> fnc) {
-			super();
 			this.fnc = (CtConsumableFunction<Object>) fnc;
 			handleListenerSetQuery(this.fnc);
 			onCallbackSet(this.getClass().getName(), "_accept", fnc.getClass(), "apply", 2, 0);
@@ -516,7 +502,6 @@ public class CtQueryImpl implements CtQuery {
 
 		@SuppressWarnings("unchecked")
 		FunctionWrapper(CtFunction<?, ?> code) {
-			super();
 			fnc = (CtFunction<Object, Object>) code;
 			handleListenerSetQuery(fnc);
 			onCallbackSet(this.getClass().getName(), "_accept", fnc.getClass(), "apply", 1, 0);
@@ -563,7 +548,13 @@ public class CtQueryImpl implements CtQuery {
 	}
 
 	private static final String JDK9_BASE_PREFIX = "java.base/";
+
+	//Pre jdk11 ClassCastException message parsing
 	private static final Pattern cceMessagePattern = Pattern.compile("(\\S+) cannot be cast to (\\S+)");
+
+	//In some implementation of jdk11 the message for ClassCastException is slightly different
+	private static final Pattern cceMessagePattern2 = Pattern.compile("class (\\S+) cannot be cast to class (\\S+)(.*)");
+
 	private static final int indexOfCallerInStack = getIndexOfCallerInStackOfLambda();
 	/**
 	 * JVM implementations reports exception in call of lambda in different way.
@@ -585,8 +576,8 @@ public class CtQueryImpl implements CtQuery {
 			for (int i = 0; i < stack.length; i++) {
 				if ("getIndexOfCallerInStackOfLambda".equals(stack[i].getMethodName())) {
 					//check whether we can detect type of lambda input parameter from CCE
-					Class<?> detectectedClass = detectTargetClassFromCCE(e, obj);
-					if (detectectedClass == null || CtType.class.equals(detectectedClass) == false) {
+					Class<?> detectedClass = detectTargetClassFromCCE(e, obj);
+					if (detectedClass == null || CtType.class.equals(detectedClass) == false) {
 						//we cannot detect type of lambda input parameter from ClassCastException on this JVM implementation
 						//mark it by negative index, so the query engine will fall back to eating of all CCEs and slow implementation
 						return -1;
@@ -598,28 +589,34 @@ public class CtQueryImpl implements CtQuery {
 		}
 	}
 
+	private static Class<?> processCCE(String objectClassName, String expectedClassName, Object input) {
+		if (objectClassName.startsWith(JDK9_BASE_PREFIX)) {
+			objectClassName = objectClassName.substring(JDK9_BASE_PREFIX.length());
+		}
+		if (objectClassName.equals(input.getClass().getName())) {
+			try {
+				return Class.forName(expectedClassName);
+			} catch (ClassNotFoundException e1) {
+				/*
+				 * It wasn't able to load the expected class from the CCE.
+				 * OK, so we cannot optimize next call and we have to let JVM to throw next CCE, but it is only performance problem. Not functional.
+				 */
+			}
+		}
+		return null;
+	}
+
 	private static Class<?> detectTargetClassFromCCE(ClassCastException e, Object input) {
 		//detect expected class from CCE message, because we have to quickly and silently ignore elements of other types
 		String message = e.getMessage();
 		if (message != null) {
 			Matcher m = cceMessagePattern.matcher(message);
 			if (m.matches()) {
-				String objectClassName = m.group(1);
-				String expectedClassName = m.group(2);
-
-
-				if (objectClassName.startsWith(JDK9_BASE_PREFIX)) {
-					objectClassName = objectClassName.substring(JDK9_BASE_PREFIX.length());
-				}
-				if (objectClassName.equals(input.getClass().getName())) {
-					try {
-						return Class.forName(expectedClassName);
-					} catch (ClassNotFoundException e1) {
-						/*
-						 * It wasn't able to load the expected class from the CCE.
-						 * OK, so we cannot optimize next call and we have to let JVM to throw next CCE, but it is only performance problem. Not functional.
-						 */
-					}
+				return processCCE(m.group(1), m.group(2), input);
+			} else {
+				Matcher m2 = cceMessagePattern2.matcher(message);
+				if (m2.matches()) {
+					return processCCE(m2.group(1), m2.group(2), input);
 				}
 			}
 		}

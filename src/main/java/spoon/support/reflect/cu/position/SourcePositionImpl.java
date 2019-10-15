@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.cu.position;
 
@@ -21,6 +10,7 @@ import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.cu.position.BodyHolderSourcePosition;
 import spoon.reflect.cu.position.DeclarationSourcePosition;
+import spoon.reflect.cu.position.NoSourcePosition;
 
 import java.io.File;
 import java.io.Serializable;
@@ -45,8 +35,10 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 		if (length == 0) {
 			return -1;
 		}
-		int g = 0, d = length - 1;
-		int m = 0, start;
+		int g = 0;
+		int d = length - 1;
+		int m = 0;
+		int start;
 		while (g <= d) {
 			m = (g + d) / 2;
 			if (position < (start = lineSeparatorPositions[m])) {
@@ -73,9 +65,12 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 		}
 		int length = lineSeparatorPositions.length;
 		if (length == 0) {
-			return -1;
+			return position;
 		}
-		int i = 0;
+		if (lineSeparatorPositions[0] > position) {
+			return position;
+		}
+		int i;
 		for (i = 0; i < lineSeparatorPositions.length - 1; i++) {
 			if (lineSeparatorPositions[i] < position && (lineSeparatorPositions[i + 1] > position)) {
 				return position - lineSeparatorPositions[i];
@@ -107,7 +102,6 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 	private int sourceStartline = -1;
 
 	public SourcePositionImpl(CompilationUnit compilationUnit, int sourceStart, int sourceEnd, int[] lineSeparatorPositions) {
-		super();
 		checkArgsAreAscending(sourceStart, sourceEnd + 1);
 		if (compilationUnit == null) {
 			throw new SpoonException("Mandatory parameter compilationUnit is null");
@@ -126,18 +120,22 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 		return true;
 	}
 
+	@Override
 	public int getColumn() {
 		return searchColumnNumber(sourceStart);
 	}
 
+	@Override
 	public int getEndColumn() {
 		return searchColumnNumber(sourceEnd);
 	}
 
+	@Override
 	public File getFile() {
 		return compilationUnit == null ? null : compilationUnit.getFile();
 	}
 
+	@Override
 	public int getLine() {
 		if (sourceStartline == -1) {
 			this.sourceStartline = searchLineNumber(this.sourceStart);
@@ -145,14 +143,17 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 		return sourceStartline;
 	}
 
+	@Override
 	public int getEndLine() {
 		return searchLineNumber(sourceEnd);
 	}
 
+	@Override
 	public int getSourceEnd() {
 		return this.sourceEnd;
 	}
 
+	@Override
 	public int getSourceStart() {
 		return this.sourceStart;
 	}
@@ -175,8 +176,11 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 		if (!(obj instanceof SourcePosition)) {
 			return false;
 		}
+		if (obj instanceof NoSourcePosition) {
+			return false;
+		}
 		SourcePosition s = (SourcePosition) obj;
-		return (getFile() == null ? s.getFile() == null : getFile().equals(s.getFile())) && getLine() == s.getLine() && getColumn() == s.getColumn();
+		return (getFile() == null ? s.getFile() == null : getFile().equals(s.getFile())) && getSourceEnd() == s.getSourceEnd() && getSourceStart() == s.getSourceStart();
 	}
 
 	@Override
@@ -191,6 +195,7 @@ public class SourcePositionImpl implements SourcePosition, Serializable {
 
 	private final CompilationUnit compilationUnit;
 
+	@Override
 	public CompilationUnit getCompilationUnit() {
 		return compilationUnit;
 	}

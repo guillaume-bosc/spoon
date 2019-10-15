@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.declaration;
 
@@ -47,7 +36,6 @@ public class CtModuleImpl extends CtNamedElementImpl implements CtModule {
 	private CtPackage rootPackage;
 
 	public CtModuleImpl() {
-		super();
 	}
 
 	@Override
@@ -90,34 +78,13 @@ public class CtModuleImpl extends CtNamedElementImpl implements CtModule {
 		}
 		if (!this.moduleDirectives.contains(moduleDirective)) {
 			moduleDirective.setParent(this);
-			CtRole role = this.computeRoleFromModuleDirectory(moduleDirective);
+			CtRole role = CtRole.MODULE_DIRECTIVE.getMatchingSubRoleFor(moduleDirective);
 
 			getFactory().getEnvironment().getModelChangeListener().onListAdd(this, role, this.moduleDirectives, moduleDirective);
 			this.moduleDirectives.add(moduleDirective);
 		}
 
 		return (T) this;
-	}
-
-	private CtRole computeRoleFromModuleDirectory(CtModuleDirective moduleDirective) {
-		CtRole role;
-		if (moduleDirective instanceof CtModuleRequirement) {
-			role = CtRole.REQUIRED_MODULE;
-		} else if (moduleDirective instanceof CtUsedService) {
-			role = CtRole.SERVICE_TYPE;
-		} else if (moduleDirective instanceof CtProvidedService) {
-			role = CtRole.PROVIDED_SERVICE;
-		} else if (moduleDirective instanceof CtPackageExport) {
-			CtPackageExport packageExport = (CtPackageExport) moduleDirective;
-			if (packageExport.isOpenedPackage()) {
-				role = CtRole.OPENED_PACKAGE;
-			} else {
-				role = CtRole.EXPORTED_PACKAGE;
-			}
-		} else {
-			role = CtRole.MODULE_DIRECTIVE;
-		}
-		return role;
 	}
 
 	@Override
@@ -131,7 +98,7 @@ public class CtModuleImpl extends CtNamedElementImpl implements CtModule {
 		}
 		if (!this.moduleDirectives.contains(moduleDirective)) {
 			moduleDirective.setParent(this);
-			CtRole role = this.computeRoleFromModuleDirectory(moduleDirective);
+			CtRole role = CtRole.MODULE_DIRECTIVE.getMatchingSubRoleFor(moduleDirective);
 
 			getFactory().getEnvironment().getModelChangeListener().onListAdd(this, role, this.moduleDirectives, position, moduleDirective);
 			this.moduleDirectives.add(position, moduleDirective);
@@ -151,7 +118,7 @@ public class CtModuleImpl extends CtNamedElementImpl implements CtModule {
 			return (T) this;
 		}
 		if (this.moduleDirectives.contains(moduleDirective)) {
-			getFactory().getEnvironment().getModelChangeListener().onListDelete(this, this.computeRoleFromModuleDirectory(moduleDirective), this.moduleDirectives, this.moduleDirectives.indexOf(moduleDirective), moduleDirective);
+			getFactory().getEnvironment().getModelChangeListener().onListDelete(this, CtRole.MODULE_DIRECTIVE.getMatchingSubRoleFor(moduleDirective), this.moduleDirectives, this.moduleDirectives.indexOf(moduleDirective), moduleDirective);
 			if (this.moduleDirectives.size() == 1) {
 				this.moduleDirectives = CtElementImpl.emptyList();
 			} else {

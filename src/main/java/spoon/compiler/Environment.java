@@ -1,23 +1,13 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.compiler;
 
 import org.apache.log4j.Level;
 import spoon.OutputType;
+import spoon.compiler.builder.EncodingProvider;
 import spoon.support.modelobs.FineModelChangeListener;
 import spoon.processing.FileGenerator;
 import spoon.processing.ProblemFixer;
@@ -26,12 +16,15 @@ import spoon.processing.Processor;
 import spoon.processing.ProcessorProperties;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.visitor.PrettyPrinter;
 import spoon.support.OutputDestinationHandler;
 import spoon.support.CompressionType;
 import spoon.support.compiler.SpoonProgress;
+import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 import java.io.File;
 import java.nio.charset.Charset;
+import java.util.function.Supplier;
 
 /**
  * This interface represents the environment in which Spoon is launched -
@@ -328,15 +321,6 @@ public interface Environment {
 	boolean checksAreSkipped();
 
 	/**
-	 * Enable or not consistency checks on the AST. See {@link #checksAreSkipped()} for a list of all checks.
-	 * @param skip false means that all checks are made (default), true means that no checks are made.
-	 *
-	 * Use {@link #disableConsistencyChecks()} instead.
-	 */
-	@Deprecated // method name is super confusing "skip" is missing
-	void setSelfChecks(boolean skip);
-
-	/**
 	 * Disable all consistency checks on the AST. Dangerous! The only valid usage of this is to keep
 	 * full backward-compatibility.
 	 */
@@ -385,9 +369,19 @@ public interface Environment {
 	Charset getEncoding();
 
 	/**
+	 * Get encoding provider, which is used to detect encoding for each file separately
+	 */
+	EncodingProvider getEncodingProvider();
+
+	/**
 	 * Set the encoding to use for parsing source code
 	 */
 	void setEncoding(Charset encoding);
+
+	/**
+	 * Set encoding provider, which is used to detect encoding for each file separately
+	 */
+	void setEncodingProvider(EncodingProvider encodingProvider);
 
 	/**
 	 * Set the output type used for processing files
@@ -412,4 +406,28 @@ public interface Environment {
 	 * Set the type of serialization to be used by default
 	 */
 	void setCompressionType(CompressionType serializationType);
+
+	/**
+	 * @return new instance of {@link PrettyPrinter} which is configured for this environment
+	 */
+	PrettyPrinter createPrettyPrinter();
+
+	/**
+	 * @param creator a {@link Supplier}, which creates new instance of pretty printer.
+	 * Can be used to create a {@link SniperJavaPrettyPrinter} for enabling the sniper mode.
+	 *
+	 */
+	void setPrettyPrinterCreator(Supplier<PrettyPrinter> creator);
+
+
+	/**
+	 * @return true if spoon is allowed to create a model of a project that contains multiple times the same class
+	 */
+	boolean isIgnoreDuplicateDeclarations();
+
+	/**
+	 * @param ignoreDuplicateDeclarations (default false)  set to true to allow spoon to create a model of a project that
+	 *                                 contains multiple times the same class
+	 */
+	void setIgnoreDuplicateDeclarations(boolean ignoreDuplicateDeclarations);
 }

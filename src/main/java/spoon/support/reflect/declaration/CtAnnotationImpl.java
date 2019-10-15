@@ -1,25 +1,12 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.declaration;
 
-import spoon.Launcher;
 import spoon.SpoonException;
 import spoon.reflect.annotations.MetamodelPropertyField;
-import spoon.reflect.code.CtCodeElement;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldAccess;
 import spoon.reflect.code.CtFieldRead;
@@ -31,11 +18,9 @@ import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtAnnotationMethod;
 import spoon.reflect.declaration.CtAnnotationType;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtShadowable;
 import spoon.reflect.declaration.CtType;
-import spoon.reflect.eval.PartialEvaluator;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.reference.CtFieldReference;
@@ -45,9 +30,9 @@ import spoon.support.DerivedProperty;
 import spoon.support.UnsettableProperty;
 import spoon.support.comparator.CtLineElementComparator;
 import spoon.support.reflect.code.CtExpressionImpl;
+import spoon.support.reflect.eval.EvalHelper;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -62,10 +47,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
-import static spoon.reflect.path.CtRole.IS_SHADOW;
-import static spoon.reflect.path.CtRole.TYPE;
-import static spoon.reflect.path.CtRole.VALUE;
 
 /**
  * The implementation for {@link spoon.reflect.declaration.CtAnnotation}.
@@ -97,9 +78,9 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 	};
 
 	public CtAnnotationImpl() {
-		super();
 	}
 
+	@Override
 	public void accept(CtVisitor visitor) {
 		visitor.visitCtAnnotation(this);
 	}
@@ -169,7 +150,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 	private <T extends CtAnnotation<A>> T addValueExpression(String elementName, CtExpression<?> expression) {
 		if (elementValues.containsKey(elementName)) {
 			// Update value of the existing one.
-			final CtExpression ctExpression = (CtExpression) elementValues.get(elementName);
+			final CtExpression ctExpression = elementValues.get(elementName);
 			if (ctExpression instanceof CtNewArray) {
 				// Already an array, add the value inside it.
 				if (expression instanceof CtNewArray) {
@@ -192,7 +173,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		} else {
 			// Add the new value.
 			expression.setParent(this);
-			getFactory().getEnvironment().getModelChangeListener().onMapAdd(this, VALUE, this.elementValues, elementName, expression);
+			getFactory().getEnvironment().getModelChangeListener().onMapAdd(this, CtRole.VALUE, this.elementValues, elementName, expression);
 			elementValues.put(elementName, expression);
 		}
 		return (T) this;
@@ -218,64 +199,6 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		return addValueExpression(elementName, value);
 	}
 
-	/**
-	 * Convert CtExpression (mostly) to their equivalent runtime objects
-	 * eg CtLiteral(3) -> 3
-	 */
-	@SuppressWarnings("unchecked")
-	private Object convertElementToRuntimeObject(CtElement value) {
-		if (value instanceof CtFieldReference) {
-			Class<?> c = null;
-			try {
-				c = ((CtFieldReference<?>) value).getDeclaringType().getActualClass();
-			} catch (Exception e) {
-				return ((CtLiteral<?>) ((CtFieldReference<?>) value).getDeclaration().getDefaultExpression()
-						.partiallyEvaluate()).getValue();
-			}
-
-			if (((CtFieldReference<?>) value).getSimpleName().equals("class")) {
-				return c;
-			}
-			CtField<?> field = ((CtFieldReference<?>) value).getDeclaration();
-			if (Enum.class.isAssignableFrom(c)) {
-				// Value references a Enum field
-				return Enum.valueOf((Class<? extends Enum>) c, ((CtFieldReference<?>) value).getSimpleName());
-			}
-			// Value is a static final
-			if (field != null) {
-				return convertElementToRuntimeObject(field.getDefaultExpression());
-			} else {
-				try {
-					return ((Field) ((CtFieldReference<?>) value).getActualField()).get(null);
-				} catch (Exception e) {
-					Launcher.LOGGER.error(e.getMessage(), e);
-				}
-				return null;
-			}
-		} else if (value instanceof CtFieldAccess) {
-			// Get variable
-			return convertElementToRuntimeObject(((CtFieldAccess<?>) value).getVariable());
-		} else if (value instanceof CtNewArray) {
-			return toArray((CtNewArray) value);
-		} else if (value instanceof CtAnnotation) {
-			// Get proxy
-			return ((CtAnnotation<?>) value).getActualAnnotation();
-		} else if (value instanceof CtLiteral) {
-			// Replace literal by his value
-			return ((CtLiteral<?>) value).getValue();
-		} else if (value instanceof CtCodeElement) {
-			// Evaluate code elements
-			PartialEvaluator eval = getFactory().Eval().createPartialEvaluator();
-			CtElement ret = eval.evaluate((CtCodeElement) value);
-
-			return this.convertElementToRuntimeObject(ret);
-		} else if (value instanceof CtTypeReference) {
-			// Get RT class for References
-			return ((CtTypeReference<?>) value).getActualClass();
-		}
-		return value;
-	}
-
 	private Class<?> getElementType(String name) {
 		// Try by CT reflection
 		CtType<?> t = getAnnotationType().getDeclaration();
@@ -293,6 +216,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		return null;
 	}
 
+	@Override
 	public CtTypeReference<A> getAnnotationType() {
 		return annotationType;
 	}
@@ -330,7 +254,13 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 	@Override
 	public Object getValueAsObject(String key) {
 		CtExpression expr = getWrappedValue(key);
-		Object ret = convertElementToRuntimeObject(expr);
+
+		// no such value, per the contract of the method
+		if (expr == null) {
+			return null;
+		}
+
+		Object ret = EvalHelper.convertElementToRuntimeObject(expr);
 		Class<?> type = getElementType(key);
 		return forceObjectToType(ret, type);
 	}
@@ -358,21 +288,6 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		return ret;
 	}
 
-
-	/** creating a real low level Java array from a CtNewArray */
-	private Object toArray(CtNewArray value) {
-		CtNewArray<?> arrayExpression = (CtNewArray<?>) value;
-
-		Class<?> componentType = arrayExpression.getType().getActualClass().getComponentType();
-		List<CtExpression<?>> elements = arrayExpression.getElements();
-
-		Object array = Array.newInstance(componentType, elements.size());
-		for (int i = 0; i < elements.size(); i++) {
-			Array.set(array, i, this.convertElementToRuntimeObject(elements.get(i)));
-		}
-
-		return array;
-	}
 
 	private CtExpression getValueAsExpression(String key) {
 
@@ -421,7 +336,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 	}
 
 	public Map<String, Object> getElementValues() {
-		TreeMap<String, Object> res = new TreeMap<>();
+		Map<String, Object> res = new TreeMap<>();
 		for (Entry<String, CtExpression> elementValue : elementValues.entrySet()) {
 			res.put(elementValue.getKey(), elementValue.getValue());
 		}
@@ -463,14 +378,14 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		if (annotationType != null) {
 			annotationType.setParent(this);
 		}
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, TYPE, annotationType, this.annotationType);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.TYPE, annotationType, this.annotationType);
 		this.annotationType = (CtTypeReference<A>) annotationType;
 		return (T) this;
 	}
 
 	@Override
 	public <T extends CtAnnotation<A>> T setElementValues(Map<String, Object> values) {
-		getFactory().getEnvironment().getModelChangeListener().onMapDeleteAll(this, VALUE, this.elementValues, new HashMap<>(elementValues));
+		getFactory().getEnvironment().getModelChangeListener().onMapDeleteAll(this, CtRole.VALUE, this.elementValues, new HashMap<>(elementValues));
 		this.elementValues.clear();
 		for (Entry<String, Object> e : values.entrySet()) {
 			addValue(e.getKey(), e.getValue());
@@ -480,7 +395,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 
 	@Override
 	public <T extends CtAnnotation<A>> T setValues(Map<String, CtExpression> values) {
-		getFactory().getEnvironment().getModelChangeListener().onMapDeleteAll(this, VALUE, this.elementValues, new HashMap<>(elementValues));
+		getFactory().getEnvironment().getModelChangeListener().onMapDeleteAll(this, CtRole.VALUE, this.elementValues, new HashMap<>(elementValues));
 		this.elementValues.clear();
 		for (Entry<String, CtExpression> e : values.entrySet()) {
 			addValue(e.getKey(), e.getValue());
@@ -500,16 +415,17 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 		return CtAnnotation.getAnnotatedElementTypeForCtElement(annotatedElement);
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	public A getActualAnnotation() {
 		class AnnotationInvocationHandler implements InvocationHandler {
 			CtAnnotation<? extends Annotation> annotation;
 
 			AnnotationInvocationHandler(CtAnnotation<? extends Annotation> annotation) {
-				super();
 				this.annotation = annotation;
 			}
 
+			@Override
 			public Object invoke(Object proxy, Method method, Object[] args) {
 				String fieldname = method.getName();
 				if ("toString".equals(fieldname)) {
@@ -517,8 +433,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 				} else if ("annotationType".equals(fieldname)) {
 					return annotation.getAnnotationType().getActualClass();
 				}
-				Object ret = getValueAsObject(fieldname);
-				return ret;
+				return getValueAsObject(fieldname);
 			}
 		}
 		return (A) Proxy.newProxyInstance(annotationType.getActualClass().getClassLoader(), new Class[] { annotationType.getActualClass() }, new AnnotationInvocationHandler(this));
@@ -534,7 +449,7 @@ public class CtAnnotationImpl<A extends Annotation> extends CtExpressionImpl<A> 
 
 	@Override
 	public <E extends CtShadowable> E setShadow(boolean isShadow) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, IS_SHADOW, isShadow, this.isShadow);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.IS_SHADOW, isShadow, this.isShadow);
 		this.isShadow = isShadow;
 		return (E) this;
 	}

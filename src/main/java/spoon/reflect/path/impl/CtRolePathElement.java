@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.path.impl;
 
@@ -24,10 +13,10 @@ import spoon.reflect.path.CtPathException;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A CtPathElement that define some roles for matching.
@@ -58,7 +47,7 @@ public class CtRolePathElement extends AbstractPathElement<CtElement, CtElement>
 		return STRING + getRole().toString() + getParamString();
 	}
 
-	private CtElement getFromSet(Set set, String name) throws CtPathException {
+	private CtElement getFromSet(Collection<?> set, String name) throws CtPathException {
 		for (Object o: set) {
 			if (o instanceof CtNamedElement) {
 				if (((CtNamedElement) o).getSimpleName().equals(name)) {
@@ -89,19 +78,32 @@ public class CtRolePathElement extends AbstractPathElement<CtElement, CtElement>
 						}
 						break;
 
-					case LIST:
+					case LIST: {
+						Collection<CtElement> subMatches;
+						if (getArguments().containsKey("name")) {
+							String name = getArguments().get("name");
+							subMatches = new CtNamedPathElement(name).scanElements(roleHandler.asList(root));
+						} else if (getArguments().containsKey("signature")) {
+							String sign = getArguments().get("signature");
+							subMatches = new CtNamedPathElement(sign).scanElements(roleHandler.asList(root));
+						} else {
+							subMatches = roleHandler.asList(root);
+						}
 						if (getArguments().containsKey("index")) {
 							int index = Integer.parseInt(getArguments().get("index"));
-							if (index < roleHandler.asList(root).size()) {
-								matchs.add((CtElement) roleHandler.asList(root).get(index));
+							if (index < subMatches.size()) {
+								matchs.add(new ArrayList<>(subMatches).get(index));
 							}
 						} else {
-							matchs.addAll(roleHandler.asList(root));
+							matchs.addAll(subMatches);
 						}
 						break;
-
+					}
 					case SET:
-						if (getArguments().containsKey("name")) {
+						if (getArguments().containsKey("signature")) {
+							String sign = getArguments().get("signature");
+							matchs.addAll(new CtNamedPathElement(sign).scanElements(roleHandler.asSet(root)));
+						} else if (getArguments().containsKey("name")) {
 							String name = getArguments().get("name");
 							try {
 								CtElement match = getFromSet(roleHandler.asSet(root), name);
@@ -109,7 +111,6 @@ public class CtRolePathElement extends AbstractPathElement<CtElement, CtElement>
 									matchs.add(match);
 								}
 							} catch (CtPathException e) {
-								//System.err.println("[ERROR] Element not found for name: " + name);
 								//No element found for name.
 							}
 						} else {

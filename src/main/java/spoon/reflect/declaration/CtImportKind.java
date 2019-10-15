@@ -1,25 +1,16 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.declaration;
 
 public enum CtImportKind {
-	TYPE,
-	ALL_TYPES,
-	ALL_STATIC_MEMBERS,
-	FIELD,
-	METHOD
+	TYPE, // import my.package.Type;
+	ALL_TYPES, // import my.package.*;
+	ALL_STATIC_MEMBERS, // import static my.package.Type.*;
+	FIELD, // import static my.package.Type.f;
+	METHOD, // import static my.package.Type.m;
+	UNRESOLVED // Any of the above when in mode no classpath and the reference cannot be resolved.
+	// It is then stored as a pure String that will be printed as is when pretty printed.
 }

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support;
 
@@ -87,10 +76,12 @@ import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtModule;
 import spoon.reflect.declaration.CtModuleRequirement;
 import spoon.reflect.declaration.CtPackage;
+import spoon.reflect.declaration.CtPackageDeclaration;
 import spoon.reflect.declaration.CtPackageExport;
 import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtProvidedService;
 import spoon.reflect.declaration.CtTypeParameter;
+import spoon.experimental.CtUnresolvedImport;
 import spoon.reflect.declaration.CtUsedService;
 import spoon.reflect.factory.CoreFactory;
 import spoon.reflect.factory.Factory;
@@ -108,6 +99,7 @@ import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtUnboundVariableReference;
 import spoon.reflect.reference.CtWildcardReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
 import spoon.support.reflect.code.CtAnnotationFieldAccessImpl;
 import spoon.support.reflect.code.CtArrayReadImpl;
 import spoon.support.reflect.code.CtArrayWriteImpl;
@@ -174,6 +166,7 @@ import spoon.support.reflect.declaration.CtInterfaceImpl;
 import spoon.support.reflect.declaration.CtMethodImpl;
 import spoon.support.reflect.declaration.CtModuleImpl;
 import spoon.support.reflect.declaration.CtModuleRequirementImpl;
+import spoon.support.reflect.declaration.CtPackageDeclarationImpl;
 import spoon.support.reflect.declaration.CtPackageExportImpl;
 import spoon.support.reflect.declaration.CtPackageImpl;
 import spoon.support.reflect.declaration.CtParameterImpl;
@@ -194,7 +187,7 @@ import spoon.support.reflect.reference.CtTypeParameterReferenceImpl;
 import spoon.support.reflect.reference.CtTypeReferenceImpl;
 import spoon.support.reflect.reference.CtUnboundVariableReferenceImpl;
 import spoon.support.reflect.reference.CtWildcardReferenceImpl;
-import spoon.support.reflect.reference.CtWildcardStaticTypeMemberReferenceImpl;
+import spoon.support.reflect.reference.CtTypeMemberWildcardImportReferenceImpl;
 import spoon.support.visitor.equals.CloneHelper;
 
 
@@ -214,16 +207,19 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		super(null);
 	}
 
+	@Override
 	public <T extends CtElement> T clone(T object) {
 		return CloneHelper.INSTANCE.clone(object);
 	}
 
+	@Override
 	public <A extends Annotation> CtAnnotation<A> createAnnotation() {
 		CtAnnotation<A> e = new CtAnnotationImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T extends Annotation> CtAnnotationType<T> createAnnotationType() {
 		CtAnnotationType<T> e = new CtAnnotationTypeImpl<>();
 		e.setFactory(getMainFactory());
@@ -231,6 +227,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public CtAnonymousExecutable createAnonymousExecutable() {
 		CtAnonymousExecutable e = new CtAnonymousExecutableImpl();
 		e.setFactory(getMainFactory());
@@ -251,54 +248,63 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtArrayTypeReference<T> createArrayTypeReference() {
 		CtArrayTypeReference<T> e = new CtArrayTypeReferenceImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtAssert<T> createAssert() {
 		CtAssert<T> e = new CtAssertImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T, A extends T> CtAssignment<T, A> createAssignment() {
 		CtAssignment<T, A> e = new CtAssignmentImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtBinaryOperator<T> createBinaryOperator() {
 		CtBinaryOperator<T> e = new CtBinaryOperatorImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <R> CtBlock<R> createBlock() {
 		CtBlock<R> e = new CtBlockImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtBreak createBreak() {
 		CtBreak e = new CtBreakImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <S> CtCase<S> createCase() {
 		CtCase<S> e = new CtCaseImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtCatch createCatch() {
 		CtCatch e = new CtCatchImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtClass<T> createClass() {
 		CtClass<T> e = new CtClassImpl<>();
 		e.setFactory(getMainFactory());
@@ -313,36 +319,42 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtConditional<T> createConditional() {
 		CtConditional<T> e = new CtConditionalImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtConstructor<T> createConstructor() {
 		CtConstructor<T> e = new CtConstructorImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtConstructor<T> createInvisibleArrayConstructor() {
 		CtConstructor<T> e = new InvisibleArrayConstructorImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtContinue createContinue() {
 		CtContinue e = new CtContinueImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtDo createDo() {
 		CtDo e = new CtDoImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T extends Enum<?>> CtEnum<T> createEnum() {
 		CtEnum<T> e = new CtEnumImpl<>();
 		e.setFactory(getMainFactory());
@@ -350,12 +362,14 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtExecutableReference<T> createExecutableReference() {
 		CtExecutableReference<T> e = new CtExecutableReferenceImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtField<T> createField() {
 		CtField<T> e = new CtFieldImpl<>();
 		e.setFactory(getMainFactory());
@@ -383,6 +397,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtAnnotationFieldAccess<T> createAnnotationFieldAccess() {
 		CtAnnotationFieldAccess<T> e = new CtAnnotationFieldAccessImpl<>();
 		e.setFactory(getMainFactory());
@@ -396,30 +411,35 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtFieldReference<T> createFieldReference() {
 		CtFieldReference<T> e = new CtFieldReferenceImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtFor createFor() {
 		CtFor e = new CtForImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtForEach createForEach() {
 		CtForEach e = new CtForEachImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtIf createIf() {
 		CtIf e = new CtIfImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtInterface<T> createInterface() {
 		CtInterface<T> e = new CtInterfaceImpl<>();
 		e.setFactory(getMainFactory());
@@ -427,24 +447,28 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtInvocation<T> createInvocation() {
 		CtInvocation<T> e = new CtInvocationImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtLiteral<T> createLiteral() {
 		CtLiteral<T> e = new CtLiteralImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtLocalVariable<T> createLocalVariable() {
 		CtLocalVariable<T> e = new CtLocalVariableImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtLocalVariableReference<T> createLocalVariableReference() {
 		CtLocalVariableReference<T> e = new CtLocalVariableReferenceImpl<>();
 		e.setFactory(getMainFactory());
@@ -465,6 +489,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtMethod<T> createMethod() {
 		CtMethod<T> e = new CtMethodImpl<>();
 		e.setFactory(getMainFactory());
@@ -478,6 +503,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtNewArray<T> createNewArray() {
 		CtNewArray<T> e = new CtNewArrayImpl<>();
 		e.setFactory(getMainFactory());
@@ -491,6 +517,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtNewClass<T> createNewClass() {
 		CtNewClass<T> e = new CtNewClassImpl<>();
 		e.setFactory(getMainFactory());
@@ -511,12 +538,14 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T, A extends T> CtOperatorAssignment<T, A> createOperatorAssignment() {
 		CtOperatorAssignment<T, A> e = new CtOperatorAssignmentImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtPackage createPackage() {
 		CtPackage e = new CtPackageImpl();
 		e.setFactory(getMainFactory());
@@ -524,54 +553,63 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public CtPackageReference createPackageReference() {
 		CtPackageReference e = new CtPackageReferenceImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtParameter<T> createParameter() {
 		CtParameter<T> e = new CtParameterImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtParameterReference<T> createParameterReference() {
 		CtParameterReference<T> e = new CtParameterReferenceImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <R> CtReturn<R> createReturn() {
 		CtReturn<R> e = new CtReturnImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <R> CtStatementList createStatementList() {
 		CtStatementList e = new CtStatementListImpl<R>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <S> CtSwitch<S> createSwitch() {
 		CtSwitch<S> e = new CtSwitchImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtSynchronized createSynchronized() {
 		CtSynchronized e = new CtSynchronizedImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtThrow createThrow() {
 		CtThrow e = new CtThrowImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtTry createTry() {
 		CtTry e = new CtTryImpl();
 		e.setFactory(getMainFactory());
@@ -585,6 +623,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public CtTypeParameterReference createTypeParameterReference() {
 		CtTypeParameterReference e = new CtTypeParameterReferenceImpl();
 		e.setFactory(getMainFactory());
@@ -605,6 +644,7 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtTypeReference<T> createTypeReference() {
 		CtTypeReference<T> e = new CtTypeReferenceImpl<>();
 		e.setFactory(getMainFactory());
@@ -618,36 +658,42 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public <T> CtUnaryOperator<T> createUnaryOperator() {
 		CtUnaryOperator<T> e = new CtUnaryOperatorImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtVariableRead<T> createVariableRead() {
 		CtVariableRead<T> e = new CtVariableReadImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtVariableWrite<T> createVariableWrite() {
 		CtVariableWrite<T> e = new CtVariableWriteImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtCodeSnippetExpression<T> createCodeSnippetExpression() {
 		CtCodeSnippetExpression<T> e = new CtCodeSnippetExpressionImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtCodeSnippetStatement createCodeSnippetStatement() {
 		CtCodeSnippetStatement e = new CtCodeSnippetStatementImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtComment createComment() {
 		CtComment e = new CtCommentImpl();
 		e.setFactory(getMainFactory());
@@ -670,22 +716,40 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		return e;
 	}
 
+	@Override
 	public CtWhile createWhile() {
 		CtWhile e = new CtWhileImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtImport createImport() {
 		CtImport e = new CtImportImpl();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
+	public CtImport createUnresolvedImport() {
+		CtImport e = new CtUnresolvedImport();
+		e.setFactory(getMainFactory());
+		return e;
+	}
+
+	@Override
+	public CtPackageDeclaration createPackageDeclaration() {
+		CtPackageDeclaration e = new CtPackageDeclarationImpl();
+		e.setFactory(getMainFactory());
+		return e;
+	}
+
+	@Override
 	public Factory getMainFactory() {
 		return factory;
 	}
 
+	@Override
 	public void setMainFactory(Factory mainFactory) {
 		this.factory = mainFactory;
 	}
@@ -720,24 +784,28 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 				lineSeparatorPositions);
 	}
 
+	@Override
 	public CompilationUnit createCompilationUnit() {
 		CompilationUnit cu = new CompilationUnitImpl();
 		cu.setFactory(getMainFactory());
 		return cu;
 	}
 
+	@Override
 	public <T> CtThisAccess<T> createThisAccess() {
 		CtThisAccess<T> e = new CtThisAccessImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public <T> CtSuperAccess<T> createSuperAccess() {
 		CtSuperAccess<T> e = new CtSuperAccessImpl<>();
 		e.setFactory(getMainFactory());
 		return e;
 	}
 
+	@Override
 	public CtElement create(Class<? extends CtElement> klass) {
 		if (klass.equals(spoon.reflect.code.CtAnnotationFieldAccess.class)) {
 			return createAnnotationFieldAccess();
@@ -964,6 +1032,9 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		if (klass.equals(spoon.reflect.reference.CtModuleReference.class)) {
 			return createModuleReference();
 		}
+		if (klass.equals(spoon.reflect.reference.CtTypeMemberWildcardImportReference.class)) {
+			return createTypeMemberWildcardImportReference();
+		}
 		if (klass.equals(spoon.reflect.declaration.CtModule.class)) {
 			return createModule();
 		}
@@ -979,15 +1050,23 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		if (klass.equals(spoon.reflect.declaration.CtUsedService.class)) {
 			return createUsedService();
 		}
+		if (klass.equals(spoon.reflect.declaration.CtCompilationUnit.class)) {
+			return createCompilationUnit();
+		}
+		if (klass.equals(spoon.reflect.declaration.CtPackageDeclaration.class)) {
+			return createPackageDeclaration();
+		}
 		throw new IllegalArgumentException("not instantiable by CoreFactory(): " + klass);
 	}
 
 	@Override
-	public CtTypeReference createWildcardStaticTypeMemberReference() {
-		CtTypeReference result = new CtWildcardStaticTypeMemberReferenceImpl();
+	public CtTypeMemberWildcardImportReference createTypeMemberWildcardImportReference() {
+		CtTypeMemberWildcardImportReference result = new CtTypeMemberWildcardImportReferenceImpl();
 		result.setFactory(getMainFactory());
 		return result;
 	}
+
+	@Override
 	public CtModule createModule() {
 		CtModule module = new CtModuleImpl();
 		module.setFactory(getMainFactory());
@@ -1029,6 +1108,5 @@ public class DefaultCoreFactory extends SubFactory implements CoreFactory {
 		ctUsedService.setFactory(getMainFactory());
 		return ctUsedService;
 	}
-
 }
 

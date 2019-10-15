@@ -1,22 +1,15 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.code;
 
+import spoon.javadoc.internal.Javadoc;
+import spoon.javadoc.internal.JavadocBlockTag;
+import spoon.javadoc.internal.JavadocDescriptionElement;
 import spoon.reflect.annotations.MetamodelPropertyField;
+import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtJavaDoc;
 import spoon.reflect.code.CtJavaDocTag;
 import spoon.reflect.declaration.CtElement;
@@ -26,7 +19,12 @@ import spoon.support.util.ModelList;
 
 import java.util.List;
 
+import static spoon.support.compiler.jdt.JDTCommentBuilder.cleanComment;
+
 public class CtJavaDocImpl extends CtCommentImpl implements CtJavaDoc {
+
+	/** the structured object resulting from parsing */
+	private transient Javadoc javadoc;
 
 	@MetamodelPropertyField(role = CtRole.COMMENT_TAG)
 	private final ModelList<CtJavaDocTag> tags = new ModelList<CtJavaDocTag>() {
@@ -85,9 +83,9 @@ public class CtJavaDocImpl extends CtCommentImpl implements CtJavaDoc {
 
 	@Override
 	public String getShortDescription() {
-		int indexEndSentence = this.getContent().indexOf(".");
+		int indexEndSentence = this.getContent().indexOf('.');
 		if (indexEndSentence == -1) {
-			indexEndSentence = this.getContent().indexOf("\n");
+			indexEndSentence = this.getContent().indexOf('\n');
 		}
 		if (indexEndSentence != -1) {
 			return this.getContent().substring(0, indexEndSentence + 1).trim();
@@ -95,6 +93,39 @@ public class CtJavaDocImpl extends CtCommentImpl implements CtJavaDoc {
 			return this.getContent().trim();
 		}
 	}
+
+	/**
+	 * Parses the content string to split in two: the description and the Javadoc tags
+	 */
+	@Override
+	public <E extends CtComment> E setContent(String content) {
+		tags.clear();
+
+		// avoiding NPE later
+		if (content == null) {
+			content = "";
+		}
+
+		String longDescription = "";
+		String currentTagContent = "";
+		CtJavaDocTag.TagType currentTag = null;
+
+		javadoc = Javadoc.parse(cleanComment(content));
+		for (JavadocBlockTag tag: javadoc.getBlockTags()) {
+			addTag(getFactory().createJavaDocTag(tag.getContent().toText(), CtJavaDocTag.TagType.tagFromName(tag.getTagName())));
+		}
+
+		// we cannot call super.setContent because it calls cleanComment (which has already been done above)
+		// and we don't want to clean the comment twice
+		String contentWithTags = javadoc.getDescription().toText().trim(); // trim is required for backward compatibility
+
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.COMMENT_CONTENT, contentWithTags, this.content);
+		this.content = contentWithTags;
+
+		return (E) this;
+	}
+
+
 
 	@Override
 	public String getLongDescription() {
@@ -116,5 +147,10 @@ public class CtJavaDocImpl extends CtCommentImpl implements CtJavaDoc {
 	@Override
 	public CtJavaDoc clone() {
 		return (CtJavaDoc) super.clone();
+	}
+
+	@Override
+	public List<JavadocDescriptionElement> getJavadocElements() {
+		return javadoc.getDescription().getElements();
 	}
 }

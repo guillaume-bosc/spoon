@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.code;
 
@@ -38,6 +27,7 @@ public abstract class CtExpressionImpl<T> extends CtCodeElementImpl implements C
 	@MetamodelPropertyField(role = CAST)
 	List<CtTypeReference<?>> typeCasts = emptyList();
 
+	@Override
 	public CtTypeReference<T> getType() {
 		return type;
 	}
@@ -59,6 +49,7 @@ public abstract class CtExpressionImpl<T> extends CtCodeElementImpl implements C
 
 	@Override
 	public <C extends CtExpression<T>> C setTypeCasts(List<CtTypeReference<?>> casts) {
+		getFactory().getEnvironment().getModelChangeListener().onListDeleteAll(this, CAST, this.typeCasts, new ArrayList<>(this.typeCasts));
 		if (casts == null || casts.isEmpty()) {
 			this.typeCasts = CtElementImpl.emptyList();
 			return (C) this;
@@ -66,7 +57,6 @@ public abstract class CtExpressionImpl<T> extends CtCodeElementImpl implements C
 		if (this.typeCasts == CtElementImpl.<CtTypeReference<?>>emptyList()) {
 			this.typeCasts = new ArrayList<>(CASTS_CONTAINER_DEFAULT_CAPACITY);
 		}
-		getFactory().getEnvironment().getModelChangeListener().onListDeleteAll(this, CAST, this.typeCasts, new ArrayList<>(this.typeCasts));
 		this.typeCasts.clear();
 		for (CtTypeReference<?> cast : casts) {
 			addTypeCast(cast);

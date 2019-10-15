@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.meta.impl;
 
@@ -25,9 +14,9 @@ import spoon.reflect.meta.RoleHandler;
 import spoon.reflect.path.CtRole;
 
 /**
- * implementation of {@link RoleHandler}, which handles attributes of type &lt;V&gt;
+ * implementation of {@link RoleHandler}
  * @param <T> the type of node whose attribute has to be manipulated
- * @param <V> the type of value of the attribute
+ * @param <U> the type of value of the attribute
  */
 abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 
@@ -40,10 +29,12 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 		return ContainerKind.SINGLE;
 	}
 
+	@Override
 	public <W, X> java.util.Collection<X> asCollection(W element) {
 		return asList(element);
 	}
 
+	@Override
 	public <W, X> java.util.List<X> asList(W e) {
 		return new AbstractList<X>() {
 			T element = castTarget(e);
@@ -70,7 +61,7 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 				}
 				X oldValue = get(0);
 				SingleHandler.this.setValue(element, value);
-				return (X) oldValue;
+				return oldValue;
 			}
 
 			@Override
@@ -125,6 +116,7 @@ abstract class SingleHandler<T, U> extends AbstractRoleHandler<T, U, U> {
 		};
 	}
 
+	@Override
 	public <W, X> java.util.Set<X> asSet(W element) {
 		return Collections.<X>singleton(getValue(element));
 	}

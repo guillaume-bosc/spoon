@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.metamodel;
 
@@ -131,6 +120,7 @@ public class Metamodel {
 		result.add(factory.Type().get(spoon.reflect.code.CtVariableWrite.class));
 		result.add(factory.Type().get(spoon.reflect.code.CtWhile.class));
 		result.add(factory.Type().get(spoon.reflect.code.UnaryOperatorKind.class));
+		result.add(factory.Type().get(spoon.reflect.code.LiteralBase.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtAnnotatedElementType.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtAnnotation.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtAnnotationMethod.class));
@@ -138,6 +128,7 @@ public class Metamodel {
 		result.add(factory.Type().get(spoon.reflect.declaration.CtAnonymousExecutable.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtClass.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtCodeSnippet.class));
+		result.add(factory.Type().get(spoon.reflect.declaration.CtCompilationUnit.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtConstructor.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtElement.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtEnum.class));
@@ -176,10 +167,12 @@ public class Metamodel {
 		result.add(factory.Type().get(spoon.reflect.reference.CtUnboundVariableReference.class));
 		result.add(factory.Type().get(spoon.reflect.reference.CtVariableReference.class));
 		result.add(factory.Type().get(spoon.reflect.reference.CtWildcardReference.class));
+		result.add(factory.Type().get(spoon.reflect.reference.CtTypeMemberWildcardImportReference.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtImport.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtImportKind.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtModule.class));
 		result.add(factory.Type().get(spoon.reflect.declaration.CtModuleRequirement.class));
+		result.add(factory.Type().get(spoon.reflect.declaration.CtPackageDeclaration.class));
 		result.add(factory.Type().get(CtPackageExport.class));
 		result.add(factory.Type().get(CtProvidedService.class));
 		result.add(factory.Type().get(spoon.reflect.reference.CtModuleReference.class));
@@ -190,12 +183,20 @@ public class Metamodel {
 
 	private static final String CLASS_SUFFIX = "Impl";
 	/**
-	 * qualified names of packages which contains interfaces of spoon model
+	 * qualified names of packages which contain interfaces of spoon model
 	 */
 	public static final Set<String> MODEL_IFACE_PACKAGES = new HashSet<>(Arrays.asList(
 			"spoon.reflect.code",
 			"spoon.reflect.declaration",
 			"spoon.reflect.reference"));
+
+	/**
+	 * qualified names of packages which contain classes (implementations) of spoon model
+	 */
+	public static final Set<String> MODEL_CLASS_PACKAGES = new HashSet<>(Arrays.asList(
+			"spoon.support.reflect.code",
+			"spoon.support.reflect.declaration",
+			"spoon.support.reflect.reference"));
 
 	/**
 	 * {@link MetamodelConcept}s by name
@@ -240,7 +241,7 @@ public class Metamodel {
 	/**
 	 * @param factory already loaded factory with all Spoon model types
 	 */
-	private Metamodel(Factory factory) {
+	protected Metamodel(Factory factory) {
 		for (String apiPackage : MODEL_IFACE_PACKAGES) {
 			if (factory.Package().get(apiPackage) == null) {
 				throw new SpoonException("Spoon Factory model is missing API package " + apiPackage);
@@ -400,9 +401,8 @@ public class Metamodel {
 				"spoon/reflect/reference",
 				"spoon/support/reflect/declaration",
 				"spoon/support/reflect/code",
-				"spoon/support/reflect/reference").forEach(path -> {
-			launcher.addInputResource(new FileSystemFolder(new File(spoonJavaSourcesDirectory, path)));
-		});
+				"spoon/support/reflect/reference").forEach(path ->
+			launcher.addInputResource(new FileSystemFolder(new File(spoonJavaSourcesDirectory, path))));
 		launcher.buildModel();
 		return launcher.getFactory();
 	}
@@ -533,7 +533,7 @@ public class Metamodel {
 		col.add(o);
 		return true;
 	}
-	static boolean containsObject(Iterable<? extends Object> iter, Object o) {
+	static boolean containsObject(Iterable<?> iter, Object o) {
 		for (Object object : iter) {
 			if (object == o) {
 				return true;

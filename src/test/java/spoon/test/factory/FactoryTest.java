@@ -1,8 +1,25 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.factory;
 
 import org.junit.Test;
 import spoon.Launcher;
 import spoon.SpoonAPI;
+import spoon.SpoonException;
 import spoon.processing.AbstractProcessor;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtFieldRead;
@@ -16,6 +33,7 @@ import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.CoreFactory;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.FactoryImpl;
+import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.NamedElementFilter;
 import spoon.support.DefaultCoreFactory;
 import spoon.support.StandardEnvironment;
@@ -23,11 +41,15 @@ import spoon.support.reflect.declaration.CtMethodImpl;
 import spoon.test.SpoonTestHelpers;
 import spoon.test.factory.testclasses.Foo;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static spoon.test.parent.ContractOnSettersParametrizedTest.createCompatibleObject;
 import static spoon.testing.utils.ModelUtils.build;
 import static spoon.testing.utils.ModelUtils.buildClass;
 
@@ -53,13 +75,13 @@ public class FactoryTest {
 	public void testFactoryOverriding()  throws Exception {
 
 		@SuppressWarnings("serial")
-		class MyCtMethod<T> extends CtMethodImpl<T>{};
+		class MyCtMethod<T> extends CtMethodImpl<T> { }
 
 		@SuppressWarnings("serial")
 		final CoreFactory specialCoreFactory = new DefaultCoreFactory() {
 			@Override
 			public <T> CtMethod<T> createMethod() {
-				MyCtMethod<T> m = new MyCtMethod<T>();
+				MyCtMethod<T> m = new MyCtMethod<>();
 				m.setFactory(getMainFactory());
 				return m;
 			}
@@ -103,7 +125,7 @@ public class FactoryTest {
 	}
 
 	@Test
-	public void testCtModel() throws Exception {
+	public void testCtModel() {
 		SpoonAPI spoon = new Launcher();
 		spoon.addInputResource("src/test/java/spoon/test/factory/testclasses");
 		spoon.buildModel();
@@ -130,27 +152,27 @@ public class FactoryTest {
 		assertEquals(5, model.getAllPackages().size());
 
 
-		CtPackage p = model.getElements(new NamedElementFilter<>(CtPackage.class,"spoon")).get(0).clone();
+		CtPackage p = model.getElements(new NamedElementFilter<>(CtPackage.class, "spoon")).get(0).clone();
 		// if we change the implem, merge is impossible
 		CtField f = spoon.getFactory().Core().createField();
 		f.setSimpleName("foo");
 		f.setType(spoon.getFactory().Type().BYTE);
-		p.getElements(new NamedElementFilter<>(CtPackage.class,"testclasses")).get(0).getType("Foo").addField(f);
+		p.getElements(new NamedElementFilter<>(CtPackage.class, "testclasses")).get(0).getType("Foo").addField(f);
 		try {
 			model.getRootPackage().addPackage(p);
 			fail("no exception thrown");
-		} catch (IllegalStateException success) {}
+		} catch (IllegalStateException success) { }
 
 		model.processWith(new AbstractProcessor<CtType>() {
-		    @Override
-		    public void process(CtType element) {
-		        element.delete();
-		    }
+			@Override
+			public void process(CtType element) {
+				element.delete();
+			}
 		});
 		assertEquals(0, model.getAllTypes().size());
 	}
 
-	public void testIncrementalModel() throws Exception {
+	public void testIncrementalModel() {
 
 		// contract: one can merge two models together
 		// May 2018: we realize that the merge is incomplete see https://github.com/INRIA/spoon/issues/2001
@@ -199,12 +221,54 @@ public class FactoryTest {
 	}
 
 	@Test
-	public void specificationCoreFactoryCreate() throws Exception {
+	public void specificationCoreFactoryCreate() {
 		// contract: all concrete metamodel classes must be instantiable by CoreFactory.create
-		for(CtType<? extends CtElement> itf : SpoonTestHelpers.getAllInstantiableMetamodelInterfaces()) {
+		for (CtType<? extends CtElement> itf : SpoonTestHelpers.getAllInstantiableMetamodelInterfaces()) {
 			CtElement o = itf.getFactory().Core().create(itf.getActualClass());
 			assertNotNull(o);
 			assertTrue(itf.getActualClass().isInstance(o));
 		}
 	}
+
+	@Test
+	public void factoryTest() throws Exception {
+		// contract: all methods of Factory can be called without exception, returning a correct object
+		Launcher spoon = new Launcher();
+		spoon.addInputResource("src/main/java/spoon/reflect/factory/Factory.java");
+		spoon.buildModel();
+		for (CtMethod<?> m : spoon.getFactory().Type().get("spoon.reflect.factory.Factory").getMethods()) {
+			if (!m.getSimpleName().startsWith("create")
+				|| "createSourcePosition".equals(m.getSimpleName()) // method with implicit contracts on int parameters
+				|| "createBodyHolderSourcePosition".equals(m.getSimpleName()) // method with implicit contracts on int parameters
+				|| "createDeclarationSourcePosition".equals(m.getSimpleName()) // method with implicit contracts on int parameters
+				|| "createNewClass".equals(m.getSimpleName()) // method with implicit contract between the two parameters
+			) {
+				continue;
+			}
+
+
+			// collecting arguments and creating parameters
+			Object[] args = new Object[m.getParameters().size()];
+			Class[] argsClass = new Class[m.getParameters().size()];
+			for (int i =0; i<args.length; i++) {
+				CtTypeReference<?> type = m.getParameters().get(i).getType();
+				args[i] = createCompatibleObject(type);
+				argsClass[i] = type.getActualClass();
+				if (!type.isPrimitive()) {
+					// post-condition to be sure that createCompatibleObject works well
+					assertTrue(args[i].getClass().toString() + " != " + argsClass[i].toString(), argsClass[i].isAssignableFrom(args[i].getClass()));
+				}
+			}
+
+			// calling the method
+			Method rm;
+			rm = m.getReference().getActualMethod();
+			//rm = spoon.getFactory().getClass().getDeclaredMethod(m.getSimpleName(), argsClass); // works also
+			//System.out.println(rm);
+			Object res = rm.invoke(spoon.getFactory(), args);
+			assertNotNull(res);
+
+		}
+	}
+
 }

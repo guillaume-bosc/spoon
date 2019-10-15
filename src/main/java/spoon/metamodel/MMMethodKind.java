@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.metamodel;
 
@@ -43,9 +32,7 @@ public enum MMMethodKind {
 	ADD_FIRST(0, true, 10, m -> {
 		if (m.getParameters().size() == 1) {
 			if (m.getSimpleName().startsWith("add") || m.getSimpleName().startsWith("insert")) {
-				if (m.getSimpleName().endsWith("AtTop") || m.getSimpleName().endsWith("Begin")) {
-					return true;
-				}
+				return m.getSimpleName().endsWith("AtTop") || m.getSimpleName().endsWith("Begin");
 			}
 		}
 		return false;
@@ -55,9 +42,7 @@ public enum MMMethodKind {
 	 */
 	ADD_LAST(0, true,  1, m -> {
 		if (m.getParameters().size() == 1) {
-			if (m.getSimpleName().startsWith("add") || m.getSimpleName().startsWith("insert")) {
-				return true;
-			}
+			return m.getSimpleName().startsWith("add") || m.getSimpleName().startsWith("insert");
 		}
 		return false;
 	}),
@@ -65,10 +50,8 @@ public enum MMMethodKind {
 	 * void addOn(int, T)
 	 */
 	ADD_ON(1, true, 1, m -> {
-		if (m.getParameters().size() == 2 && m.getParameters().get(0).getType().getSimpleName().equals("int")) {
-			if (m.getSimpleName().startsWith("add") || m.getSimpleName().startsWith("insert")) {
-				return true;
-			}
+		if (m.getParameters().size() == 2 && "int".equals(m.getParameters().get(0).getType().getSimpleName())) {
+			return m.getSimpleName().startsWith("add") || m.getSimpleName().startsWith("insert");
 		}
 		return false;
 	}),
@@ -117,8 +100,8 @@ public enum MMMethodKind {
 	public static MMMethodKind kindOf(CtMethod<?> method) {
 		MMMethodKind result = OTHER;
 		for (MMMethodKind k : values()) {
-			if (k.detector.test(method) && result.level < k.level) {
-				if (result.level == k.level) {
+			if (k.detector.test(method) && result.level <= k.level) {
+				if (result.level == k.level && k != OTHER) {
 					throw new SpoonException("Ambiguous method kinds " + result.name() + " X " + k.name() + " for method " + method.getSignature());
 				}
 				result = k;

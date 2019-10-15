@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2017 INRIA and contributors
+ * Copyright (C) 2006-2018 INRIA and contributors
  * Spoon - http://spoon.gforge.inria.fr/
  *
  * This software is governed by the CeCILL-C License under French law and
@@ -128,8 +128,8 @@ class ReplacementVisitor extends CtScanner {
 		if (shouldBeDeleted != null) {
 			list.remove(index);
 			if (replace.length > 0) {
-				for (int i = 0; i < replace.length; i++) {
-					T ele = (T) replace[i];
+				for (CtElement aReplace : replace) {
+					T ele = (T) aReplace;
 					if (ele != null) {
 						list.add(index, ele);
 						ele.setParent(shouldBeDeleted.getParent());

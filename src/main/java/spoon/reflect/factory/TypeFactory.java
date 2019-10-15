@@ -1,23 +1,12 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.factory;
 
+import spoon.SpoonException;
 import spoon.reflect.code.CtNewClass;
-import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
@@ -27,37 +16,40 @@ import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtPackage;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeParameter;
+import spoon.experimental.CtUnresolvedImport;
+import spoon.reflect.reference.CtActualTypeContainer;
 import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.declaration.CtImport;
 import spoon.reflect.reference.CtIntersectionTypeReference;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.reference.CtTypeMemberWildcardImportReference;
 import spoon.reflect.visitor.CtAbstractVisitor;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.support.DefaultCoreFactory;
 import spoon.support.SpoonClassNotFoundException;
 import spoon.support.StandardEnvironment;
+import spoon.support.util.internal.MapUtils;
 import spoon.support.visitor.ClassTypingContext;
 import spoon.support.visitor.GenericTypeAdapter;
 import spoon.support.visitor.MethodTypingContext;
 import spoon.support.visitor.java.JavaReflectionTreeBuilder;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static spoon.testing.utils.ModelUtils.createFactory;
+import java.util.function.Supplier;
 
 /**
  * The {@link CtType} sub-factory.
@@ -292,10 +284,10 @@ public class TypeFactory extends SubFactory {
 	}
 
 	/**
-	 * Creates a reference to an n-dimension array of given type.
+	 * Creates a reference to a n-dimension array of given type.
 	 */
 	public CtArrayTypeReference<?> createArrayReference(CtTypeReference<?> reference, int n) {
-		CtTypeReference<?> componentType = null;
+		CtTypeReference<?> componentType;
 		if (n == 1) {
 			return createArrayReference(reference);
 		}
@@ -351,16 +343,9 @@ public class TypeFactory extends SubFactory {
 	/**
 	 * Create a wildcard reference to a simple type
 	 */
-	public CtTypeReference createWildcardStaticTypeMemberReference(CtTypeReference typeReference) {
-		CtTypeReference ref = factory.Core().createWildcardStaticTypeMemberReference();
-		ref.setFactory(this.factory);
-		if (typeReference.getDeclaringType() != null) {
-			ref.setDeclaringType(typeReference.getDeclaringType().clone());
-		}
-		if (typeReference.getPackage() != null) {
-			ref.setPackage(typeReference.getPackage().clone());
-		}
-		ref.setSimpleName(typeReference.getSimpleName());
+	public CtTypeMemberWildcardImportReference createTypeMemberWildcardImportReference(CtTypeReference typeReference) {
+		CtTypeMemberWildcardImportReference ref = factory.Core().createTypeMemberWildcardImportReference();
+		ref.setTypeReference(typeReference.clone());
 		return ref;
 	}
 
@@ -392,14 +377,6 @@ public class TypeFactory extends SubFactory {
 	 */
 	public CtTypeParameterReference createReference(CtTypeParameter type) {
 		CtTypeParameterReference ref = factory.Core().createTypeParameterReference();
-
-		if (type.getSuperclass() != null) {
-			ref.setBoundingType(type.getSuperclass().clone());
-		}
-
-		for (CtAnnotation<? extends Annotation> ctAnnotation : type.getAnnotations()) {
-			ref.addAnnotation(ctAnnotation.clone());
-		}
 		ref.setSimpleName(type.getSimpleName());
 		ref.setParent(type);
 		return ref;
@@ -425,9 +402,13 @@ public class TypeFactory extends SubFactory {
 	}
 
 	/**
-	 * Gets a created type from its qualified name.
+	 * Gets a created type from its qualified name if source in the source classpath.
 	 *
-	 * @return a found type or null if does not exist
+	 * `TypeFactory#get(String)` returns null if the class is not in the source classpath (even if it is in the binary classpath).
+	 * `TypeFactory#get(Class)` returns null if the class is neither in the source classpath nor in the binary classpath,
+	 * and returns a [shadow class](http://spoon.gforge.inria.fr/reflection.html) if it is only in the binary classpath.
+	 * Note that a shadow class has empty method bodies, if you need a shadow class with method bodies, see [spoon-decompiler](https://github.com/INRIA/spoon/tree/master/spoon-decompiler))
+	 * @return a type if source in the source classpath or null if does not exist
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> CtType<T> get(final String qualifiedName) {
@@ -467,26 +448,54 @@ public class TypeFactory extends SubFactory {
 				}
 				return enclosingClasses.get(0);
 			}
-			try {
-				// If the class name can't be parsed in integer, the method throws an exception.
+			if (isNumber(className)) {
 				// If the class name is an integer, the class is an anonymous class, otherwise,
 				// it is a standard class.
-				Integer.parseInt(className);
-				final List<CtNewClass> anonymousClasses = t.getElements(new TypeFilter<CtNewClass>(CtNewClass.class) {
-					@Override
-					public boolean matches(CtNewClass element) {
-						return super.matches(element) && element.getAnonymousClass().getQualifiedName().equals(qualifiedName);
+				//TODO reset cache when type is modified
+				return getFromCache(t, className, () -> {
+					//the searching for declaration of anonymous class is expensive
+					//do that only once and store it in cache of CtType
+					Integer.parseInt(className);
+					final List<CtNewClass> anonymousClasses = t.getElements(new TypeFilter<CtNewClass>(CtNewClass.class) {
+						@Override
+						public boolean matches(CtNewClass element) {
+							return super.matches(element) && element.getAnonymousClass().getQualifiedName().equals(qualifiedName);
+						}
+					});
+					if (anonymousClasses.isEmpty()) {
+						return null;
 					}
+					return anonymousClasses.get(0).getAnonymousClass();
 				});
-				if (anonymousClasses.isEmpty()) {
-					return null;
-				}
-				return anonymousClasses.get(0).getAnonymousClass();
-			} catch (NumberFormatException e) {
+			} else {
 				return t.getNestedType(className);
 			}
 		}
 		return null;
+	}
+
+	private static final String CACHE_KEY = TypeFactory.class.getName() + "-AnnonymousTypeCache";
+
+	private <T, K> T getFromCache(CtElement element, K key, Supplier<T> valueResolver) {
+		Map<K, T> cache = (Map<K, T>) element.getMetadata(CACHE_KEY);
+		if (cache == null) {
+			cache = new HashMap<>();
+			element.putMetadata(CACHE_KEY, cache);
+		}
+		return MapUtils.getOrCreate(cache, key, valueResolver);
+	}
+
+	private boolean isNumber(String str) {
+		if (str == null || str.isEmpty()) {
+			return false;
+		}
+		int len = str.length();
+		for (int i = 0; i < len; i++) {
+			if (!Character.isDigit(str.charAt(i))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -521,7 +530,7 @@ public class TypeFactory extends SubFactory {
 
 	/**
 	 * Gets a type from its runtime Java class. If the class isn't in the spoon path,
-	 * the class will be build from the Java reflection and will be marked as
+	 * the class will be built from the Java reflection and will be marked as
 	 * shadow (see {@link spoon.reflect.declaration.CtShadowable}).
 	 *
 	 * @param <T>
@@ -558,6 +567,11 @@ public class TypeFactory extends SubFactory {
 			}
 		}
 		return aType;
+	}
+
+	private Factory createFactory() {
+		//use existing environment to use correct class loader
+		return new FactoryImpl(new DefaultCoreFactory(), factory.getEnvironment());
 	}
 
 	/**
@@ -622,6 +636,9 @@ public class TypeFactory extends SubFactory {
 	 * 		the name of the formal parameter
 	 */
 	public CtTypeParameterReference createTypeParameterReference(String name) {
+		if ("?".equals(name)) {
+			throw new SpoonException("the Spoon metamodel has evolved, use Factory.createWildcardReference() instead");
+		}
 		CtTypeParameterReference typeParam = factory.Core().createTypeParameterReference();
 		typeParam.setSimpleName(name);
 		return typeParam;
@@ -654,7 +671,7 @@ public class TypeFactory extends SubFactory {
 			}
 		}
 		Visitor visitor = new Visitor();
-		((CtElement) formalTypeDeclarer).accept(visitor);
+		formalTypeDeclarer.accept(visitor);
 		return visitor.adapter;
 	}
 
@@ -689,7 +706,25 @@ public class TypeFactory extends SubFactory {
 	 */
 	public CtImport createImport(CtReference reference) {
 		CtImport ctImport = factory.Core().createImport();
-		return ctImport.setReference(reference.clone());
+		CtReference importRef = reference.clone();
+		//import reference is always fully qualified and has no generic arguments
+		new CtScanner() {
+			@Override
+			protected void enter(CtElement e) {
+				e.setImplicit(false);
+				if (e instanceof CtActualTypeContainer) {
+					CtActualTypeContainer atc = (CtActualTypeContainer) e;
+					atc.setActualTypeArguments(Collections.emptyList());
+				}
+			}
+		}.scan(importRef);
+		return ctImport.setReference(importRef);
 	}
 
+	public CtImport createUnresolvedImport(String reference, boolean isStatic) {
+		CtUnresolvedImport ctUnresolvedImport = (CtUnresolvedImport) factory.Core().createUnresolvedImport();
+		ctUnresolvedImport.setUnresolvedReference(reference);
+		ctUnresolvedImport.setStatic(isStatic);
+		return ctUnresolvedImport;
+	}
 }

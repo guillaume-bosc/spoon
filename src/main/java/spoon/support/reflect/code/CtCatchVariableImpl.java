@@ -1,21 +1,11 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.code;
 
+import spoon.reflect.ModelElementContainerDefaultCapacities;
 import spoon.reflect.annotations.MetamodelPropertyField;
 import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtExpression;
@@ -41,17 +31,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import static spoon.reflect.ModelElementContainerDefaultCapacities.CATCH_VARIABLE_MULTI_TYPES_CONTAINER_DEFAULT_CAPACITY;
-import static spoon.reflect.path.CtRole.NAME;
-import static spoon.reflect.path.CtRole.MULTI_TYPE;
-
 public class CtCatchVariableImpl<T> extends CtCodeElementImpl implements CtCatchVariable<T> {
 	private static final long serialVersionUID = 1L;
 
 	@MetamodelPropertyField(role = CtRole.NAME)
 	String name = "";
 
-	@MetamodelPropertyField(role = MULTI_TYPE)
+	@MetamodelPropertyField(role = CtRole.MULTI_TYPE)
 	List<CtTypeReference<?>> types = emptyList();
 
 	@MetamodelPropertyField(role = CtRole.MODIFIER)
@@ -121,7 +107,7 @@ public class CtCatchVariableImpl<T> extends CtCodeElementImpl implements CtCatch
 
 	@Override
 	public <C extends CtNamedElement> C setSimpleName(String simpleName) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, NAME, simpleName, this.name);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.NAME, simpleName, this.name);
 		this.name = simpleName;
 		return (C) this;
 	}
@@ -138,10 +124,10 @@ public class CtCatchVariableImpl<T> extends CtCodeElementImpl implements CtCatch
 			return (T) this;
 		}
 		if (types == CtElementImpl.<CtTypeReference<?>>emptyList()) {
-			types = new ArrayList<>(CATCH_VARIABLE_MULTI_TYPES_CONTAINER_DEFAULT_CAPACITY);
+			types = new ArrayList<>(ModelElementContainerDefaultCapacities.CATCH_VARIABLE_MULTI_TYPES_CONTAINER_DEFAULT_CAPACITY);
 		}
 		type.setParent(this);
-		getFactory().getEnvironment().getModelChangeListener().onListAdd(this, MULTI_TYPE, this.types, type);
+		getFactory().getEnvironment().getModelChangeListener().onListAdd(this, CtRole.MULTI_TYPE, this.types, type);
 		types.add(type);
 		return (T) this;
 	}
@@ -151,7 +137,7 @@ public class CtCatchVariableImpl<T> extends CtCodeElementImpl implements CtCatch
 		if (this.types == CtElementImpl.<CtTypeReference<?>>emptyList()) {
 			return false;
 		}
-		getFactory().getEnvironment().getModelChangeListener().onListDelete(this, MULTI_TYPE, types, types.indexOf(ref), ref);
+		getFactory().getEnvironment().getModelChangeListener().onListDelete(this, CtRole.MULTI_TYPE, types, types.indexOf(ref), ref);
 		return types.remove(ref);
 	}
 
@@ -162,7 +148,7 @@ public class CtCatchVariableImpl<T> extends CtCodeElementImpl implements CtCatch
 
 	@Override
 	public <T extends CtMultiTypedElement> T setMultiTypes(List<CtTypeReference<?>> types) {
-		getFactory().getEnvironment().getModelChangeListener().onListDeleteAll(this, MULTI_TYPE, this.types, new ArrayList<>(this.types));
+		getFactory().getEnvironment().getModelChangeListener().onListDeleteAll(this, CtRole.MULTI_TYPE, this.types, new ArrayList<>(this.types));
 		if (types == null || types.isEmpty()) {
 			this.types = CtElementImpl.emptyList();
 			return (T) this;

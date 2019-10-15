@@ -1,21 +1,11 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.visitor;
 
+import spoon.reflect.declaration.CtCompilationUnit;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.chain.CtScannerListener;
@@ -42,6 +32,7 @@ public class EarlyTerminatingScanner<T> extends CtScanner {
 	private T result;
 	private CtScannerListener listener;
 	protected CtRole scannedRole;
+	private boolean visitCompilationUnitContent = false;
 
 	protected void terminate() {
 		terminate = true;
@@ -128,12 +119,12 @@ public class EarlyTerminatingScanner<T> extends CtScanner {
 			doScan(scannedRole, element, ScanningMode.NORMAL);
 		} else {
 			//the listener is defined, call it's enter method first
-			ScanningMode mode = listener.enter(element);
+			ScanningMode mode = listener.enter(scannedRole, element);
 			if (mode != ScanningMode.SKIP_ALL) {
 				//the listener decided to visit this element and may be children
 				doScan(scannedRole, element, mode);
 				//then call exit, only if enter returned true
-				listener.exit(element);
+				listener.exit(scannedRole, element);
 			} //else the listener decided to skip this element and all children. Do not call exit.
 		}
 	}
@@ -150,6 +141,24 @@ public class EarlyTerminatingScanner<T> extends CtScanner {
 		if (mode.visitChildren) {
 			//do not call scan(CtElement) nor scan(CtRole, CtElement), because they would cause StackOverflowError
 			element.accept(this);
+		}
+	}
+
+	@Override
+	public void visitCtCompilationUnit(CtCompilationUnit compilationUnit) {
+		if (isVisitCompilationUnitContent()) {
+			enter(compilationUnit);
+			scan(CtRole.COMMENT, compilationUnit.getComments());
+			scan(CtRole.ANNOTATION, compilationUnit.getAnnotations());
+			scan(CtRole.PACKAGE_DECLARATION, compilationUnit.getPackageDeclaration());
+			scan(CtRole.DECLARED_IMPORT, compilationUnit.getImports());
+			//visit directly the module (instead of reference only)
+			scan(CtRole.DECLARED_MODULE, compilationUnit.getDeclaredModule());
+			//visit directly the types (instead of references only)
+			scan(CtRole.DECLARED_TYPE, compilationUnit.getDeclaredTypes());
+			exit(compilationUnit);
+		} else {
+			super.visitCtCompilationUnit(compilationUnit);
 		}
 	}
 
@@ -178,5 +187,21 @@ public class EarlyTerminatingScanner<T> extends CtScanner {
 				}
 			}
 		}
+	}
+
+	/**
+	 * @return true if types and modules are visited. false if only their references are visited. false is default
+	 */
+	public boolean isVisitCompilationUnitContent() {
+		return visitCompilationUnitContent;
+	}
+
+	/**
+	 * @param visitCompilationUnitContent use true if types and modules have to be visited. false if only their references have to be visited.
+	 * false is default
+	 */
+	public EarlyTerminatingScanner<T> setVisitCompilationUnitContent(boolean visitCompilationUnitContent) {
+		this.visitCompilationUnitContent = visitCompilationUnitContent;
+		return this;
 	}
 }

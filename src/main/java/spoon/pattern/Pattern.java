@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.pattern;
 
@@ -26,6 +15,7 @@ import java.util.Map;
 
 import spoon.SpoonException;
 import spoon.pattern.internal.DefaultGenerator;
+import spoon.pattern.internal.PatternPrinter;
 import spoon.pattern.internal.matcher.MatchingScanner;
 import spoon.pattern.internal.node.ListOfNodes;
 import spoon.pattern.internal.parameter.ParameterInfo;
@@ -33,8 +23,6 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.visitor.chain.CtConsumer;
 import spoon.support.Experimental;
-import spoon.support.util.ImmutableMap;
-import spoon.support.util.ImmutableMapImpl;
 
 /**
  * Represents a pattern for matching code. A pattern is composed of a list of AST models, where a model is an AST with some nodes being "pattern parameters".
@@ -103,7 +91,6 @@ public class Pattern {
 		}
 
 		MatchingScanner scanner = new MatchingScanner(modelValueResolver, consumer);
-		ImmutableMap parameters = new ImmutableMapImpl();
 		if (input instanceof Collection<?>) {
 			scanner.scan(null, (Collection<CtElement>) input);
 		} else if (input instanceof Map) {
@@ -125,6 +112,14 @@ public class Pattern {
 			matches.add(match);
 		});
 		return matches;
+	}
+
+	/**
+	 * @param addParameterComments if true then it adds comments with parameter names
+	 * @return pattern printed as java sources
+	 */
+	public String print(boolean addParameterComments) {
+		return new PatternPrinter().setPrintParametersAsComments(addParameterComments).printNode(modelValueResolver);
 	}
 
 	@Override

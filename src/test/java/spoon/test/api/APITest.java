@@ -1,8 +1,23 @@
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
+ * Spoon - http://spoon.gforge.inria.fr/
+ *
+ * This software is governed by the CeCILL-C License under French law and
+ * abiding by the rules of distribution of free software. You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ */
 package spoon.test.api;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.Assert;
 import org.junit.Test;
 import spoon.Launcher;
 import spoon.OutputType;
@@ -36,6 +51,7 @@ import spoon.support.reflect.declaration.CtElementImpl;
 import spoon.template.Local;
 import spoon.template.TemplateMatcher;
 import spoon.template.TemplateParameter;
+import spoon.test.api.processors.AwesomeProcessor;
 import spoon.test.api.testclasses.Bar;
 
 import java.io.File;
@@ -62,7 +78,7 @@ import static org.junit.Assert.fail;
 public class APITest {
 
 	@Test
-	public void testBasicAPIUsage() throws Exception {
+	public void testBasicAPIUsage() {
 		// this test shows a basic usage of the Launcher API without command line
 		// and asserts there is no exception
 		Launcher spoon = new Launcher();
@@ -79,9 +95,9 @@ public class APITest {
 	}
 
 	@Test
-	public void testOverrideOutputWriter() throws Exception {
+	public void testOverrideOutputWriter() {
 		// this test that we can correctly set the Java output processor
-		final List<Object> l = new ArrayList<Object>();
+		final List<Object> l = new ArrayList<>();
 		Launcher spoon = new Launcher() {
 			@Override
 			public JavaOutputProcessor createOutputWriter() {
@@ -103,7 +119,7 @@ public class APITest {
 				"-i", "src/test/resources/spoon/test/api/",
 				"-o", "fancy/fake/apitest" // we shouldn't write anything anyway
 		});
-		Assert.assertEquals(3, l.size());
+		assertEquals(3, l.size());
 	}
 
 	@Test
@@ -128,7 +144,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testDuplicateFolder() throws Exception {
+	public void testDuplicateFolder() {
 		// it's possible to pass twice the same folder as parameter
 		// the virtual folder removes the duplicate before passing to JDT
 		try {
@@ -143,7 +159,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testDuplicateFilePlusFolder() throws Exception {
+	public void testDuplicateFilePlusFolder() {
 		// more complex case: a file is given, together with the enclosing folder
 		try {
 			Launcher.main(new String[] {
@@ -157,7 +173,7 @@ public class APITest {
 	}
 
 	@Test(expected = Exception.class)
-	public void testNotValidInput() throws Exception {
+	public void testNotValidInput() {
 		String invalidEntry = "does/not/exists//Foo.java";
 		Launcher.main(new String[] { "-i",
 				invalidEntry,
@@ -166,7 +182,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testAddProcessorMethodInSpoonAPI() throws Exception {
+	public void testAddProcessorMethodInSpoonAPI() {
 		final SpoonAPI launcher = new Launcher();
 		launcher.addInputResource("./src/test/java/spoon/test/api/testclasses");
 		launcher.setSourceOutputDirectory("./target/spooned");
@@ -182,7 +198,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testOutputOfSpoon() throws Exception {
+	public void testOutputOfSpoon() {
 		final File sourceOutput = new File("./target/spoon/test/output/");
 		final SpoonAPI launcher = new Launcher();
 		launcher.addInputResource("./src/test/java/spoon/test/api/testclasses");
@@ -193,7 +209,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testDestinationOfSpoon() throws Exception {
+	public void testDestinationOfSpoon() {
 		final File binaryOutput = new File("./target/spoon/test/binary/");
 		final Launcher launcher = new Launcher();
 		launcher.getEnvironment().setShouldCompile(true);
@@ -206,7 +222,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testPrintNotAllSourcesWithFilter() throws Exception {
+	public void testPrintNotAllSourcesWithFilter() {
 		// contract: setOutputFilter can take an arbitrary filter
 		final File target = new File("./target/print-not-all/default");
 		final SpoonAPI launcher = new Launcher();
@@ -231,7 +247,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testPrintNotAllSourcesWithNames() throws Exception {
+	public void testPrintNotAllSourcesWithNames() {
 		// contract: setOutputFilter can take a list of fully-qualified classes to be pretty-printed
 		final File target = new File("./target/print-not-all/array");
 		final SpoonAPI launcher = new Launcher();
@@ -250,7 +266,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testPrintNotAllSourcesInCommandLine() throws Exception {
+	public void testPrintNotAllSourcesInCommandLine() {
 		final File target = new File("./target/print-not-all/command");
 		final SpoonAPI launcher = new Launcher();
 		launcher.run(new String[] {
@@ -269,7 +285,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testInvalidateCacheOfCompiler() throws Exception {
+	public void testInvalidateCacheOfCompiler() {
 		final Launcher spoon = new Launcher();
 		spoon.addInputResource("./src/test/java/spoon/test/api/testclasses/Bar.java");
 		spoon.setSourceOutputDirectory("./target/api");
@@ -294,7 +310,7 @@ public class APITest {
 	}
 
 	@Test
-	public void testSetterInNodes() throws Exception {
+	public void testSetterInNodes() {
 		// contract: Check that all setters of an object have a condition to check
 		// that the new value is != null to avoid NPE when we set the parent.
 		class SetterMethodWithoutCollectionsFilter extends TypeFilter<CtMethod<?>> {
@@ -403,7 +419,7 @@ public class APITest {
 		CtIf templateRoot = matcherCtClass.getMethod("matcher").getBody().getStatement(0);
 
 		final List<CtMethod<?>> setters = Query.getElements(launcher.getFactory(), new SetterMethodWithoutCollectionsFilter(launcher.getFactory()));
-		assertTrue("Number of setters found null", setters.size() > 0);
+		assertTrue("Number of setters found null", !setters.isEmpty());
 
 		for (CtStatement statement : setters.stream().map((Function<CtMethod<?>, CtStatement>) ctMethod -> ctMethod.getBody().getStatement(0)).collect(Collectors.toList())) {
 

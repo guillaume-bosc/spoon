@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -50,20 +39,17 @@ import spoon.reflect.code.CtLambda;
 import spoon.reflect.code.CtTypeAccess;
 import spoon.reflect.code.CtVariableAccess;
 import spoon.reflect.declaration.CtClass;
-import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtModule;
-import spoon.reflect.declaration.CtPackageExport;
-import spoon.reflect.declaration.CtProvidedService;
 import spoon.reflect.declaration.CtModuleRequirement;
+import spoon.reflect.declaration.CtPackageExport;
 import spoon.reflect.declaration.CtParameter;
+import spoon.reflect.declaration.CtProvidedService;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtUsedService;
 import spoon.reflect.declaration.CtVariable;
 import spoon.reflect.factory.CoreFactory;
-import spoon.reflect.factory.ExecutableFactory;
-import spoon.reflect.factory.TypeFactory;
 import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtFieldReference;
@@ -99,7 +85,7 @@ public class JDTTreeBuilderHelper {
 	 */
 	static String computeAnonymousName(char[] anonymousQualifiedName) {
 		final String poolName = CharOperation.charToString(anonymousQualifiedName);
-		return poolName.substring(poolName.lastIndexOf(CtType.INNERTTYPE_SEPARATOR) + 1, poolName.length());
+		return poolName.substring(poolName.lastIndexOf(CtType.INNERTTYPE_SEPARATOR) + 1);
 	}
 
 	/**
@@ -122,7 +108,7 @@ public class JDTTreeBuilderHelper {
 	 * Creates a catch variable from a type reference.
 	 *
 	 * @param typeReference
-	 * 		Correspond to the exception type declared in the catch.
+	 * 		Corresponds to the exception type declared in the catch.
 	 * @return a catch variable.
 	 */
 	CtCatchVariable<Throwable> createCatchVariable(TypeReference typeReference) {
@@ -176,18 +162,16 @@ public class JDTTreeBuilderHelper {
 	 * Analyzes if {@code singleNameReference} points to a {@link CtVariable} visible in current
 	 * scope and, if existent, returns its corresponding {@link CtVariableAccess}. Returns
 	 * {@code null} if {@code singleNameReference} could not be resolved as variable access. Since
-	 * we are in noclasspath mode this function may also returns {@code null} if
+	 * we are in noclasspath mode this function may also return {@code null} if
 	 * {@code singleNameReference} points to a variable declared by an unknown class.
 	 *
 	 * @param singleNameReference
 	 * 		The potential variable access.
 	 * @return A {@link CtVariableAccess} if {@code singleNameReference} points to a variable
-	 * 		   visible in current scope, {@code null} otherwise.
+	 * 		visible in current scope, {@code null} otherwise.
 	 */
 	<T> CtVariableAccess<T> createVariableAccessNoClasspath(SingleNameReference singleNameReference) {
-		final TypeFactory typeFactory = jdtTreeBuilder.getFactory().Type();
 		final CoreFactory coreFactory = jdtTreeBuilder.getFactory().Core();
-		final ExecutableFactory executableFactory = jdtTreeBuilder.getFactory().Executable();
 		final ContextBuilder contextBuilder = jdtTreeBuilder.getContextBuilder();
 		final ReferenceBuilder referenceBuilder = jdtTreeBuilder.getReferencesBuilder();
 		final PositionBuilder positionBuilder = jdtTreeBuilder.getPositionBuilder();
@@ -215,18 +199,6 @@ public class JDTTreeBuilderHelper {
 				// have been declared by a method/constructor.
 				final CtExecutable executable = (CtExecutable) variable.getParent();
 
-				// create list of executable's parameter types
-				final List<CtTypeReference<?>> parameterTypesOfExecutable = new ArrayList<>();
-				@SuppressWarnings("unchecked")
-				final List<CtParameter<?>> parametersOfExecutable = executable.getParameters();
-				for (CtParameter<?> parameter : parametersOfExecutable) {
-					parameterTypesOfExecutable.add(parameter.getType() != null
-							? parameter.getType().clone()
-							// it's the best match :(
-							: typeFactory.OBJECT.clone()
-					);
-				}
-
 				// find executable's corresponding jdt element
 				AbstractMethodDeclaration executableJDT = null;
 				for (final ASTPair astPair : contextBuilder.stack) {
@@ -242,20 +214,7 @@ public class JDTTreeBuilderHelper {
 						// create an 'empty' type reference since we have no further information
 						// available
 						executableJDT.binding == null ? coreFactory.createTypeReference()
-								: referenceBuilder.getTypeReference(
-										executableJDT.binding.declaringClass);
-
-				// If executable is a constructor, `executable.getType()` returns null since the
-				// parent is not available yet. Fortunately, however, the return type of a
-				// constructor is its declaring class which, in our case, is already available with
-				// declaringReferenceOfExecutable.
-				CtTypeReference executableTypeReference = executable instanceof CtConstructor
-						// IMPORTANT: Create a clone of the type reference (rt) if retrieved by
-						// other AST elements as `executableFactory.createReference` (see below)
-						// indirectly sets the parent of `rt` and, thus, may break the AST!
-						? declaringReferenceOfExecutable.clone()
-						: executable.getType().clone();
-
+								: referenceBuilder.getTypeReference(executableJDT.binding.declaringClass);
 			}
 			variableReference = parameterReference;
 			variableAccess = isLhsAssignment(contextBuilder, singleNameReference)
@@ -296,25 +255,23 @@ public class JDTTreeBuilderHelper {
 		boolean isOtherBinding = qualifiedNameReference.otherBindings == null || qualifiedNameReference.otherBindings.length == 0;
 		if (qualifiedNameReference.binding instanceof FieldBinding) {
 			ref = jdtTreeBuilder.getReferencesBuilder().getVariableReference(qualifiedNameReference.fieldBinding());
-			ref.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(sourceStart, sourceEnd));
+			ref.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(getVariableReferenceSourceStart(sourceStart, sourceEnd), sourceEnd));
 
 			va = createFieldAccess(ref, createTargetFieldAccess(qualifiedNameReference, (CtFieldReference<Object>) ref), isOtherBinding && fromAssignment);
 		} else {
 			ref = jdtTreeBuilder.getReferencesBuilder().getVariableReference((VariableBinding) qualifiedNameReference.binding);
-			ref.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(sourceStart, sourceEnd));
+			ref.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(getVariableReferenceSourceStart(sourceStart, sourceEnd), sourceEnd));
 
 			va = createVariableAccess(ref, isOtherBinding && fromAssignment);
 		}
 
-		ref.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(sourceStart, sourceEnd));
-
 		if (qualifiedNameReference.otherBindings != null) {
 			int i = 0; //positions index;
-			va.setPosition(ref.getPosition());
+			va.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(sourceStart, sourceEnd));
 			sourceStart = (int) (positions[qualifiedNameReference.indexOfFirstFieldBinding - 1] >>> 32);
 			for (FieldBinding b : qualifiedNameReference.otherBindings) {
 				isOtherBinding = qualifiedNameReference.otherBindings.length == i + 1;
-				CtFieldAccess<T> other = createFieldAccess(//
+				CtFieldAccess<T> other = createFieldAccess(
 						jdtTreeBuilder.getReferencesBuilder().<T>getVariableReference(b, qualifiedNameReference.tokens[i + 1]), va, isOtherBinding && fromAssignment);
 				//set source position of fa
 				if (i + qualifiedNameReference.indexOfFirstFieldBinding >= qualifiedNameReference.otherBindings.length) {
@@ -340,6 +297,19 @@ public class JDTTreeBuilderHelper {
 		}
 		va.setPosition(jdtTreeBuilder.getPositionBuilder().buildPosition(qualifiedNameReference.sourceStart(), qualifiedNameReference.sourceEnd()));
 		return va;
+	}
+
+	private int getVariableReferenceSourceStart(int sourceStart, int sourceEnd) {
+		char[] contents = jdtTreeBuilder.getContextBuilder().getCompilationUnitContents();
+		//search for last dot, which is not contained in comment
+		int lastIdentifierStart = sourceStart;
+		while (true) {
+			int dotIdx = PositionBuilder.findNextChar(contents, sourceEnd, lastIdentifierStart, '.');
+			if (dotIdx < 0) {
+				return lastIdentifierStart;
+			}
+			lastIdentifierStart = dotIdx + 1;
+		}
 	}
 
 	/**
@@ -428,7 +398,7 @@ public class JDTTreeBuilderHelper {
 		fieldAccess.getVariable().setDeclaringType(declaringRef);
 		fieldAccess.getVariable().setStatic(true);
 		fieldAccess.setTarget(jdtTreeBuilder.getFactory().Code().createTypeAccess(declaringRef));
-		// In no classpath mode and with qualified name, the binding don't have a good name.
+		// In no classpath mode and with qualified name, the binding doesn't have a good name.
 		fieldAccess.getVariable()
 				.setSimpleName(createQualifiedTypeName(CharOperation.subarray(qualifiedNameReference.tokens, qualifiedNameReference.tokens.length - 1, qualifiedNameReference.tokens.length)));
 		return fieldAccess;
@@ -465,7 +435,7 @@ public class JDTTreeBuilderHelper {
 	CtTypeAccess<?> createTypeAccess(QualifiedNameReference qualifiedNameReference, CtFieldReference<?> fieldReference) {
 		final TypeBinding receiverType = qualifiedNameReference.actualReceiverType;
 		if (receiverType != null) {
-			final CtTypeReference<Object> qualifiedRef = jdtTreeBuilder.getReferencesBuilder().getQualifiedTypeReference(//
+			final CtTypeReference<Object> qualifiedRef = jdtTreeBuilder.getReferencesBuilder().getQualifiedTypeReference(
 					qualifiedNameReference.tokens, receiverType, qualifiedNameReference.fieldBinding().declaringClass.enclosingType(), new JDTTreeBuilder.OnAccessListener() {
 						@Override
 						public boolean onAccess(char[][] tokens, int index) {
@@ -611,8 +581,8 @@ public class JDTTreeBuilderHelper {
 			executableReference.setSimpleName(CharOperation.charToString(referenceExpression.selector));
 			executableReference.setDeclaringType(jdtTreeBuilder.getReferencesBuilder().getTypeReference(referenceExpression.lhs.resolvedType));
 		}
-		final CtTypeReference<T> declaringType = (CtTypeReference<T>) executableReference.getDeclaringType();
-		executableReference.setType(declaringType == null ? null : declaringType.clone());
+		final CtTypeReference<T> returnType = executableReference.getType();
+		executableReference.setType(returnType == null ? null : returnType.clone());
 		executableRef.setExecutable(executableReference);
 		return executableRef;
 	}
@@ -650,7 +620,7 @@ public class JDTTreeBuilderHelper {
 			if (typeDeclaration.superclass != null) {
 				((CtClass) type).setSuperclass(jdtTreeBuilder.references.buildTypeReference(typeDeclaration.superclass, typeDeclaration.scope));
 			}
-			if (typeDeclaration.binding.isAnonymousType() || (typeDeclaration.binding instanceof LocalTypeBinding && typeDeclaration.binding.enclosingMethod() != null)) {
+			if (typeDeclaration.binding != null && (typeDeclaration.binding.isAnonymousType() || (typeDeclaration.binding instanceof LocalTypeBinding && typeDeclaration.binding.enclosingMethod() != null))) {
 				type.setSimpleName(computeAnonymousName(typeDeclaration.binding.constantPoolName()));
 			} else {
 				type.setSimpleName(new String(typeDeclaration.name));

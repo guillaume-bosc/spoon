@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.template;
 
@@ -384,7 +373,6 @@ public abstract class Substitution {
 		CtConstructor<T> newConstructor = targetClass.getFactory().Constructor().create(targetClass, sourceMethod);
 		newConstructor = substitute(targetClass, template, newConstructor);
 		targetClass.addConstructor(newConstructor);
-		// newConstructor.setParent(targetClass);
 		return newConstructor;
 	}
 
@@ -408,7 +396,6 @@ public abstract class Substitution {
 			newMethod.setBody(null);
 		}
 		targetType.addMethod(newMethod);
-		// newMethod.setParent(targetType);
 		return newMethod;
 	}
 
@@ -437,7 +424,6 @@ public abstract class Substitution {
 			}
 		}
 		targetClass.addConstructor(newConstrutor);
-		// newConstrutor.setParent(targetClass);
 		return newConstrutor;
 	}
 
@@ -537,35 +523,6 @@ public abstract class Substitution {
 	}
 
 	/**
-	 * Substitutes all the template parameters in the first template element
-	 * annotated with an instance of the given annotation type.
-	 *
-	 * @param targetType
-	 *            the target type
-	 * @param template
-	 *            the template instance
-	 * @param annotationType
-	 *            the annotation type
-	 * @return the element where all the template parameters has be substituted
-	 *         by their values
-	 */
-	// public static <E extends CtElement> E substitute(
-	// CtSimpleType<?> targetType, Template template,
-	// Class<? extends Annotation> annotationType) {
-	// CtClass<? extends Template> c = targetType.getFactory().Class
-	// .get(template.getClass());
-	// E element = (E) c.getAnnotatedChildren(annotationType).get(0);
-	// if (element == null)
-	// return null;
-	// if (targetType == null)
-	// throw new RuntimeException("target is null in substitution");
-	// E result = CtCloner.clone(element);
-	// new SubstitutionVisitor(targetType.getFactory(), targetType, template)
-	// .scan(result);
-	// return result;
-	// }
-
-	/**
 	 * Substitutes all the template parameters in a given template type and
 	 * returns the resulting type.
 	 *
@@ -602,7 +559,6 @@ public abstract class Substitution {
 	public static <T> CtField<T> insertField(CtType<?> targetType, Template<?> template, CtField<T> sourceField) {
 		CtField<T> field = substitute(targetType, template, sourceField);
 		targetType.addField(field);
-		// field.setParent(targetType);
 		return field;
 	}
 
@@ -666,14 +622,14 @@ public abstract class Substitution {
 	private static <T> void checkTemplateContracts(CtClass<T> c) {
 		for (CtField f : c.getFields()) {
 			Parameter templateParamAnnotation = f.getAnnotation(Parameter.class);
-			if (templateParamAnnotation != null && !templateParamAnnotation.value().equals("")) {
+			if (templateParamAnnotation != null && !templateParamAnnotation.value().isEmpty()) {
 				String proxyName = templateParamAnnotation.value();
 				// contract: if value, then the field type must be String or CtTypeReference
 				String fieldTypeQName = f.getType().getQualifiedName();
 				if (fieldTypeQName.equals(String.class.getName())) {
 					// contract: the name of the template parameter must correspond to the name of the field
 					// as found, by Pavel, this is not good contract because it prevents easy refactoring of templates
-					// we remove it but keep th commented code in case somebody would come up with this bad idae
+					// we remove it but keep the commented code in case somebody would come up with this bad idea
 //					if (!f.getSimpleName().equals("_" + f.getAnnotation(Parameter.class).value())) {
 //						throw new TemplateException("the field name of a proxy template parameter must be called _" + f.getSimpleName());
 //					}

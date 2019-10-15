@@ -1,13 +1,11 @@
 [![Maven Central](https://img.shields.io/maven-central/v/fr.inria.gforge.spoon/spoon-core.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22fr.inria.gforge.spoon%22%20AND%20a%3A%22spoon-core%22)
 [![Travis Build Status](https://travis-ci.org/INRIA/spoon.svg?branch=master)](https://travis-ci.org/INRIA/spoon)
 [![Coverage Status](https://coveralls.io/repos/INRIA/spoon/badge.png)](https://coveralls.io/r/INRIA/spoon)
-[![Jenkins Build Status](https://ci.inria.fr/sos/job/Spoon%20Install%20Commit%20Hook/badge/icon)](https://ci.inria.fr/sos/job/Spoon%20Install%20Commit%20Hook/)
-
-[SonarQube Dashboard](https://sonarqube.ow2.org/dashboard?id=fr.inria.gforge.spoon%3Aspoon-core)
+[![Jenkins Build](https://ci.inria.fr/sos/job/Spoon-Snapshot-Deployer/badge/icon)](https://ci.inria.fr/sos/job/Spoon-Snapshot-Deployer) [![SonarQube](https://sonarqube.ow2.org//api/badges/gate?key=fr.inria.gforge.spoon%3Aspoon-core)](https://sonarqube.ow2.org/dashboard?id=fr.inria.gforge.spoon%3Aspoon-core)
 
 # Spoon
 
-Spoon is an open-source library to analyze, rewrite, transform, transpile Java source code. It parses source files to build a well-designed AST with powerful analysis and transformation API. It fully supports Java 8, Java 9 and Java 10.
+Spoon is an open-source library to analyze, rewrite, transform, transpile Java source code. It parses source files to build a well-designed AST with powerful analysis and transformation API. It fully supports modern Java versions up to Java 11.
 Spoon is an official Inria open-source project, and member of the [OW2](https://www.ow2.org/) open-source consortium.
 The official website is available at <http://spoon.gforge.inria.fr/>.
 
@@ -31,14 +29,7 @@ If you use Spoon for academic purposes, please cite: Renaud Pawlak, Martin Monpe
 
 ## Getting started in 2 seconds
 
-Get latest stable version with Maven:
-```xml
-<dependency>
-    <groupId>fr.inria.gforge.spoon</groupId>
-    <artifactId>spoon-core</artifactId>
-    <version>7.0.0</version>
-</dependency>
-```
+Get latest stable version with Maven, see <https://search.maven.org/artifact/fr.inria.gforge.spoon/spoon-core>
 
 And start using it:
 
@@ -47,7 +38,6 @@ CtClass l = Launcher.parseClass("class A { void m() { System.out.println(\"yeah\
 ```
 
 Some examples about the usage of Spoon can be found on [spoon-examples](https://github.com/SpoonLabs/spoon-examples).
-
 
 ## Contributing in 2 seconds
 
@@ -84,42 +74,7 @@ mvn test
 
 ### Download
 
-Stable version:
-
-```xml
-<dependency>
-    <groupId>fr.inria.gforge.spoon</groupId>
-    <artifactId>spoon-core</artifactId>
-    <version>7.0.0</version>
-</dependency>
-```
-
-Snapshot version:
-
-```xml
-<dependencies>
-	<dependency>
-		<groupId>fr.inria.gforge.spoon</groupId>
-		<artifactId>spoon-core</artifactId>
-		<version>7.1.0-SNAPSHOT</version>
-	</dependency>
-</dependencies>
-<repositories>
-	<repository>
-      <id>maven.inria.fr-snapshot</id>
-      <name>Maven Repository for Spoon Snapshots</name>
-      <url>http://maven.inria.fr/artifactory/spoon-public-snapshot</url>
-    </repository>
-</repositories>
-```
-
-### Eclipse IDE Setup
-
-In order to generate the Eclipse project files required for importing run the following commands from the root spoon directory (requires Maven):
-```
-mvn eclipse:clean
-mvn eclipse:eclipse
-```
+The download information is at <http://spoon.gforge.inria.fr/>.
 
 ### Ecosystem
 
@@ -130,31 +85,67 @@ See <http://spoon.gforge.inria.fr/ecosystem.html>
   - [Spoon: Getting Started - Simon Urli @ OW2Con'18 (Paris)](https://www.youtube.com/watch?v=ZZzdVTIu-OY)
   - [Generate Test Assertion with Spoon - Benjamin Danglot @ OW2Con'17 (Paris)](https://www.youtube.com/watch?v=JcCIbjnkfD4)
 
-## Contributors
+## Github Contributors
 
 Alphabetical order of last names
 
-* Olivier Barais
+    git log --pretty="%an" | sed -e '/Spoon Bot/d' | sort -u | awk 'NF>=2 {print "* " $0}' | sort -k3
+
 * David Bernard
-* Benjamin Danglot
+* Artur Bosch
+* Egor Bredikhin
+* Maxime CLEMENT
 * Benoit Cornu
-* Didier Donsez
-* Favio DeMarco
-* Christophe Dufour
+* Andre Cruz
+* Benjamin DANGLOT
+* Scott Dickerson
+* Yann Diorcet
 * Thomas Durieux
+* Sergey Fedorov
 * Alcides Fonseca
-* Sebastian Lamelas Marcote
-* Romain Leventov
+* Clement Fournier
+* Jan Galinski
+* Nicolas Harrand
+* Mickael Istria
+* Mehdi Kaytoue
+* Urs Keller
+* Filip Krakowski
+* Lukas Krejci
+* Ashutosh Kumar Verma
+* Roman Leventov
+* Fan Long
+* Kai Luo
 * Matias Martinez
+* Luke Merrick
 * Martin Monperrus
+* Vincenzo Musco
 * Carlos Noguera
-* Gérard Paligot
+* Gerard Paligot
 * Renaud Pawlak
-* Nicolas Pessemier
 * Nicolas Petitprez
 * Phillip Schichtel
 * Lionel Seinturier
+* Miguel Sozinho Ramalho
 * Marcel Steinbeck
+* Christopher Stokes
+* Eddie T
 * Simon Urli
 * Pavel Vojtechovsky
 * Stefan Wolf
+* Diorcet Yann
+* Gregor Zeitlinger
+* Tomasz Zielinski
+
+Early contributors:
+
+* Olivier Barais
+* David Bernard
+* Benoit Cornu
+* Favio DeMarco
+* Didier Donsez
+* Christophe Dufour
+* Sebastian Lamelas Marcote
+* Matias Martinez
+* Carlos Noguera
+* Renaud Pawlak
+* Nicolas Pessemier

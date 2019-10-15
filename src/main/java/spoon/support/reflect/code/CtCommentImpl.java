@@ -1,35 +1,27 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.code;
 
 import spoon.reflect.annotations.MetamodelPropertyField;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtJavaDoc;
+import spoon.reflect.cu.SourcePosition;
+import spoon.reflect.declaration.CtCompilationUnit;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.CtVisitor;
 
-import static spoon.reflect.path.CtRole.COMMENT_CONTENT;
-import static spoon.reflect.path.CtRole.TYPE;
+import java.util.Objects;
+
+import static spoon.support.compiler.jdt.JDTCommentBuilder.cleanComment;
 
 public class CtCommentImpl extends CtStatementImpl implements CtComment {
 	private static final long serialVersionUID = 1L;
 
 	@MetamodelPropertyField(role = CtRole.COMMENT_CONTENT)
-	private String content;
+	protected String content;
 
 	@MetamodelPropertyField(role = CtRole.COMMENT_TYPE)
 	private CommentType type;
@@ -47,8 +39,32 @@ public class CtCommentImpl extends CtStatementImpl implements CtComment {
 	}
 
 	@Override
+	public String getRawContent() {
+		SourcePosition pos = getPosition();
+		CtCompilationUnit cu = pos.getCompilationUnit();
+		if (cu != null) {
+			String source = cu.getOriginalSourceCode();
+			if (source != null) {
+				return source.substring(pos.getSourceStart(), pos.getSourceEnd() + 1);
+			}
+		}
+		return "";
+	}
+
+	@Override
 	public <E extends CtComment> E setContent(String content) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, COMMENT_CONTENT, content, this.content);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.COMMENT_CONTENT, content, this.content);
+		this.content = cleanComment(content);
+		return (E) this;
+	}
+
+	/**
+	 * FOR ADVANCED USAGE ONLY
+	 * Set the comment content, without cleaning the comment, if the cleaning behavior to get a canonical version does not work for you.
+	 * Does not ensure any AST contract such as calling the change listener
+	 * You have to cast your comment to CtCommentImpl, it's not beautiful, but it's known :-)
+	 */
+	public <E extends CtComment> E _setRawContent(String content) {
 		this.content = content;
 		return (E) this;
 	}
@@ -60,7 +76,7 @@ public class CtCommentImpl extends CtStatementImpl implements CtComment {
 
 	@Override
 	public <E extends CtComment> E setCommentType(CommentType commentType) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, TYPE, commentType, this.type);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.TYPE, commentType, this.type);
 		type = commentType;
 		return (E) this;
 	}
@@ -85,9 +101,7 @@ public class CtCommentImpl extends CtStatementImpl implements CtComment {
 
 		CtCommentImpl ctComment = (CtCommentImpl) o;
 
-		if (content != null
-				? !content.equals(ctComment.content)
-				: ctComment.content != null) {
+		if (!Objects.equals(content, ctComment.content)) {
 			return false;
 		}
 		return type == ctComment.type;

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.declaration;
 
@@ -36,10 +25,6 @@ import spoon.support.reflect.CtModifierHandler;
 
 import java.util.Set;
 
-import static spoon.reflect.path.CtRole.IS_SHADOW;
-import static spoon.reflect.path.CtRole.IS_VARARGS;
-import static spoon.reflect.path.CtRole.TYPE;
-
 /**
  * The implementation for {@link spoon.reflect.declaration.CtParameter}.
  *
@@ -57,8 +42,10 @@ public class CtParameterImpl<T> extends CtNamedElementImpl implements CtParamete
 	@MetamodelPropertyField(role = CtRole.MODIFIER)
 	private CtModifierHandler modifierHandler = new CtModifierHandler(this);
 
+	@MetamodelPropertyField(role = CtRole.IS_INFERRED)
+	private boolean inferred;
+
 	public CtParameterImpl() {
-		super();
 	}
 
 	@Override
@@ -90,11 +77,23 @@ public class CtParameterImpl<T> extends CtNamedElementImpl implements CtParamete
 	}
 
 	@Override
+	public boolean isInferred() {
+		return this.inferred;
+	}
+
+	@Override
+	public <U extends CtParameter<T>> U setInferred(boolean inferred) {
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.IS_INFERRED, inferred, this.inferred);
+		this.inferred = inferred;
+		return (U) this;
+	}
+
+	@Override
 	public <C extends CtTypedElement> C setType(CtTypeReference<T> type) {
 		if (type != null) {
 			type.setParent(this);
 		}
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, TYPE, type, this.type);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.TYPE, type, this.type);
 		this.type = type;
 		return (C) this;
 	}
@@ -106,7 +105,7 @@ public class CtParameterImpl<T> extends CtNamedElementImpl implements CtParamete
 
 	@Override
 	public <C extends CtParameter<T>> C setVarArgs(boolean varArgs) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, IS_VARARGS, varArgs, this.varArgs);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.IS_VARARGS, varArgs, this.varArgs);
 		this.varArgs = varArgs;
 		return (C) this;
 	}
@@ -178,7 +177,7 @@ public class CtParameterImpl<T> extends CtNamedElementImpl implements CtParamete
 
 	@Override
 	public <E extends CtShadowable> E setShadow(boolean isShadow) {
-		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, IS_SHADOW, isShadow, this.isShadow);
+		getFactory().getEnvironment().getModelChangeListener().onObjectUpdate(this, CtRole.IS_SHADOW, isShadow, this.isShadow);
 		this.isShadow = isShadow;
 		return (E) this;
 	}

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.visitor.clone;
 
@@ -172,6 +161,7 @@ public class CloneBuilder extends spoon.reflect.visitor.CtInheritanceScanner {
 	// auto-generated, see spoon.generating.CloneVisitorGenerator
 	public <T> void visitCtLiteral(spoon.reflect.code.CtLiteral<T> e) {
 		((spoon.reflect.code.CtLiteral<T>) (other)).setValue(e.getValue());
+		((spoon.reflect.code.CtLiteral<T>) (other)).setBase(e.getBase());
 		super.visitCtLiteral(e);
 	}
 
@@ -228,14 +218,16 @@ public class CloneBuilder extends spoon.reflect.visitor.CtInheritanceScanner {
 	public <T> void visitCtParameter(spoon.reflect.declaration.CtParameter<T> e) {
 		((spoon.reflect.declaration.CtParameter<T>) (other)).setVarArgs(e.isVarArgs());
 		((spoon.reflect.declaration.CtParameter<T>) (other)).setModifiers(e.getModifiers());
+		((spoon.reflect.declaration.CtParameter<T>) (other)).setInferred(e.isInferred());
 		((spoon.reflect.declaration.CtParameter<T>) (other)).setShadow(e.isShadow());
 		super.visitCtParameter(e);
 	}
 
 	// auto-generated, see spoon.generating.CloneVisitorGenerator
-	public void visitCtTypeParameterReference(spoon.reflect.reference.CtTypeParameterReference e) {
-		((spoon.reflect.reference.CtTypeParameterReference) (other)).setUpper(e.isUpper());
-		super.visitCtTypeParameterReference(e);
+	@java.lang.Override
+	public void visitCtWildcardReference(spoon.reflect.reference.CtWildcardReference wildcardReference) {
+		((spoon.reflect.reference.CtWildcardReference) (other)).setUpper(wildcardReference.isUpper());
+		super.visitCtWildcardReference(wildcardReference);
 	}
 
 	// auto-generated, see spoon.generating.CloneVisitorGenerator
@@ -287,6 +279,14 @@ public class CloneBuilder extends spoon.reflect.visitor.CtInheritanceScanner {
 	public void visitCtModuleRequirement(spoon.reflect.declaration.CtModuleRequirement moduleRequirement) {
 		((spoon.reflect.declaration.CtModuleRequirement) (other)).setRequiresModifiers(moduleRequirement.getRequiresModifiers());
 		super.visitCtModuleRequirement(moduleRequirement);
+	}
+
+	// auto-generated, see spoon.generating.CloneVisitorGenerator
+	@java.lang.Override
+	public void visitCtCompilationUnit(spoon.reflect.declaration.CtCompilationUnit compilationUnit) {
+		((spoon.reflect.declaration.CtCompilationUnit) (other)).setFile(compilationUnit.getFile());
+		((spoon.reflect.declaration.CtCompilationUnit) (other)).setLineSeparatorPositions(compilationUnit.getLineSeparatorPositions());
+		super.visitCtCompilationUnit(compilationUnit);
 	}
 }
 

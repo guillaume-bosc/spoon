@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -52,7 +41,7 @@ class JDTImportBuilder {
 		this.sourceUnit = declarationUnit.compilationResult.compilationUnit;
 		this.filePath = CharOperation.charToString(sourceUnit.getFileName());
 		// get the CU: it has already been built during model building in JDTBasedSpoonCompiler
-		this.spoonUnit = factory.CompilationUnit().getOrCreate(filePath);
+		this.spoonUnit = JDTTreeBuilder.getOrCreateCompilationUnit(declarationUnit, factory);
 		this.imports = new HashSet<>();
 	}
 
@@ -68,7 +57,7 @@ class JDTImportBuilder {
 			String importName = importRef.toString();
 			if (!importRef.isStatic()) {
 				if (importName.endsWith("*")) {
-					int lastDot = importName.lastIndexOf(".");
+					int lastDot = importName.lastIndexOf('.');
 					String packageName = importName.substring(0, lastDot);
 
 					// only get package from the model by traversing from rootPackage the model
@@ -77,23 +66,31 @@ class JDTImportBuilder {
 
 					if (ctPackage != null) {
 						this.imports.add(createImportWithPosition(ctPackage.getReference(), importRef));
+					} else {
+						if (factory.getEnvironment().getNoClasspath()) {
+							this.imports.add(createUnresolvedImportWithPosition(importName, false, importRef));
+						}
 					}
 
 				} else {
 					CtType klass = this.getOrLoadClass(importName);
 					if (klass != null) {
 						this.imports.add(createImportWithPosition(klass.getReference(), importRef));
+					} else {
+						if (factory.getEnvironment().getNoClasspath()) {
+							this.imports.add(createUnresolvedImportWithPosition(importName, false, importRef));
+						}
 					}
 				}
 			} else {
-				int lastDot = importName.lastIndexOf(".");
+				int lastDot = importName.lastIndexOf('.');
 				String className = importName.substring(0, lastDot);
 				String methodOrFieldName = importName.substring(lastDot + 1);
 
 				CtType klass = this.getOrLoadClass(className);
 				if (klass != null) {
-					if (methodOrFieldName.equals("*")) {
-						this.imports.add(createImportWithPosition(factory.Type().createWildcardStaticTypeMemberReference(klass.getReference()), importRef));
+					if ("*".equals(methodOrFieldName)) {
+						this.imports.add(createImportWithPosition(factory.Type().createTypeMemberWildcardImportReference(klass.getReference()), importRef));
 					} else {
 						List<CtNamedElement> methodOrFields = klass.getElements(new NamedElementFilter<>(CtNamedElement.class, methodOrFieldName));
 
@@ -101,6 +98,10 @@ class JDTImportBuilder {
 							CtNamedElement methodOrField = methodOrFields.get(0);
 							this.imports.add(createImportWithPosition(methodOrField.getReference(), importRef));
 						}
+					}
+				} else {
+					if (factory.getEnvironment().getNoClasspath()) {
+						this.imports.add(createUnresolvedImportWithPosition(importName, true, importRef));
 					}
 				}
 			}
@@ -110,9 +111,23 @@ class JDTImportBuilder {
 	}
 
 	private CtImport createImportWithPosition(CtReference ref, ImportReference importRef) {
+		char[] content = sourceUnit.getContents();
 		CtImport imprt = factory.Type().createImport(ref);
-		imprt.setPosition(factory.Core().createCompoundSourcePosition(spoonUnit, importRef.sourceStart(), importRef.sourceEnd(), importRef.declarationSourceStart, importRef.declarationEnd, spoonUnit.getLineSeparatorPositions()));
-		//TODO initialize source position of ref
+		//include comment before import
+		int declStart = importRef.declarationSourceStart;
+		int commentStart = PositionBuilder.findNextNonWhitespace(false, content, declStart, PositionBuilder.findPrevNonWhitespace(content, 0, declStart - 1) + 1);
+		imprt.setPosition(factory.Core().createCompoundSourcePosition(spoonUnit, importRef.sourceStart(), importRef.sourceEnd(), commentStart, importRef.declarationEnd, spoonUnit.getLineSeparatorPositions()));
+		imprt.getReference().setPosition(factory.Core().createSourcePosition(spoonUnit, importRef.sourceStart(), importRef.sourceEnd(), spoonUnit.getLineSeparatorPositions()));
+		return imprt;
+	}
+
+	private CtImport createUnresolvedImportWithPosition(String ref, boolean isStatic, ImportReference importRef) {
+		char[] content = sourceUnit.getContents();
+		CtImport imprt = factory.Type().createUnresolvedImport(ref, isStatic);
+		//include comment before import
+		int declStart = importRef.declarationSourceStart;
+		int commentStart = PositionBuilder.findNextNonWhitespace(false, content, declStart, PositionBuilder.findPrevNonWhitespace(content, 0, declStart - 1) + 1);
+		imprt.setPosition(factory.Core().createCompoundSourcePosition(spoonUnit, importRef.sourceStart(), importRef.sourceEnd(), commentStart, importRef.declarationEnd, spoonUnit.getLineSeparatorPositions()));
 		return imprt;
 	}
 

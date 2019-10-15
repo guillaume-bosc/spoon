@@ -1,23 +1,15 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.reflect.reference;
 
 import spoon.Launcher;
+import spoon.SpoonException;
 import spoon.reflect.annotations.MetamodelPropertyField;
+import spoon.reflect.code.CtFieldAccess;
+import spoon.reflect.code.CtTypeAccess;
 import spoon.reflect.declaration.CtEnum;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtType;
@@ -26,6 +18,7 @@ import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtVisitor;
+import spoon.support.SpoonClassNotFoundException;
 import spoon.support.util.RtHelper;
 
 import java.lang.reflect.AnnotatedElement;
@@ -50,7 +43,6 @@ public class CtFieldReferenceImpl<T> extends CtVariableReferenceImpl<T> implemen
 	boolean stat = false;
 
 	public CtFieldReferenceImpl() {
-		super();
 	}
 
 	@Override
@@ -60,17 +52,29 @@ public class CtFieldReferenceImpl<T> extends CtVariableReferenceImpl<T> implemen
 
 	@Override
 	public Member getActualField() {
-		try {
-			if (getDeclaringType().getActualClass().isAnnotation()) {
-				return getDeclaringType().getActualClass().getDeclaredMethod(
-						getSimpleName());
-			}
-			return getDeclaringType().getActualClass().getDeclaredField(
-					getSimpleName());
-		} catch (Exception e) {
-			Launcher.LOGGER.error(e.getMessage(), e);
+		CtTypeReference<?> typeRef = getDeclaringType();
+		if (typeRef == null) {
+			throw new SpoonException("Declaring type of field " + getSimpleName() + " isn't defined");
 		}
-		return null;
+		Class<?> clazz;
+		try {
+			clazz = typeRef.getActualClass();
+		} catch (SpoonClassNotFoundException e) {
+			if (getFactory().getEnvironment().getNoClasspath()) {
+				Launcher.LOGGER.info("The class " + typeRef.getQualifiedName() + " of field " + getSimpleName() + " is not on class path. Problem ignored in noclasspath mode");
+				return null;
+			}
+			throw e;
+		}
+		try {
+			if (clazz.isAnnotation()) {
+				return clazz.getDeclaredMethod(getSimpleName());
+			} else {
+				return clazz.getDeclaredField(getSimpleName());
+			}
+		} catch (NoSuchMethodException | NoSuchFieldException e) {
+			throw new SpoonException("The field " + getQualifiedName() + " not found", e);
+		}
 	}
 
 	@Override
@@ -224,6 +228,12 @@ public class CtFieldReferenceImpl<T> extends CtVariableReferenceImpl<T> implemen
 		CtVariable<?> v = getDeclaration();
 		if (v != null) {
 			return v.getModifiers();
+		}
+		// the modifiers of the "class" of AClass.class is the empty set
+		if (this.isParentInitialized()
+				&& this.getParent() instanceof CtFieldAccess
+				&& ((CtFieldAccess) this.getParent()).getTarget() instanceof CtTypeAccess) {
+			return emptySet();
 		}
 		Member m = getActualField();
 		if (m != null) {

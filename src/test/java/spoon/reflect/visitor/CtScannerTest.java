@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2006-2015 INRIA and contributors
+/**
+ * Copyright (C) 2006-2018 INRIA and contributors
  * Spoon - http://spoon.gforge.inria.fr/
  *
  * This software is governed by the CeCILL-C License under French law and
@@ -14,7 +14,6 @@
  * The fact that you are presently reading this means that you have had
  * knowledge of the CeCILL-C license and that you accept its terms.
  */
-
 package spoon.reflect.visitor;
 
 import org.junit.Test;
@@ -62,7 +61,7 @@ import static org.junit.Assert.fail;
 public class CtScannerTest {
 
 	@Test
-	public void testScannerContract() throws Exception {
+	public void testScannerContract() {
 		// contract: CtScanner must call enter and exit methods in each visit methods.
 		final Launcher launcher = new Launcher();
 		launcher.setArgs(new String[] {"--output-type", "nooutput" });
@@ -112,7 +111,7 @@ public class CtScannerTest {
 	}
 
 	@Test
-	public void testScannerCallsAllProperties() throws Exception {
+	public void testScannerCallsAllProperties() {
 		// contract: CtScanner must visit all metamodel properties and use correct CtRole!
 		final Launcher launcher = new Launcher();
 		launcher.addInputResource("./src/main/java/spoon/reflect/");
@@ -179,7 +178,7 @@ public class CtScannerTest {
 					}
 				}).first();
 
-				if (getter.getName().equals("getComments") && leafConcept.getMetamodelInterface().isSubtypeOf(ctRefRef)) {
+				if ("getComments".equals(getter.getName()) && leafConcept.getMetamodelInterface().isSubtypeOf(ctRefRef)) {
 					//one cannot set comments on references see the @UnsettableProperty of CtReference#setComments
 					return;
 				}
@@ -204,7 +203,7 @@ public class CtScannerTest {
 			calledMethods.removeAll(checkedMethods);
 
 			// contract: CtScanner only calls methods that have a role and the associated getter
-			if (calledMethods.size() > 0) {
+			if (!calledMethods.isEmpty()) {
 				problems.add("CtScanner " + visitMethod.getPosition() + " calls unexpected methods: " + calledMethods);
 			}
 		}
@@ -213,14 +212,14 @@ public class CtScannerTest {
 		if (scannerVisitMethodsByName.isEmpty() == false) {
 			problems.add("These CtScanner visit methods were not checked: " + scannerVisitMethodsByName.keySet());
 		}
-		if (problems.size() > 0) {
+		if (!problems.isEmpty()) {
 			fail(String.join("\n", problems));
 		}
 		assertTrue("not enough checks " + c.nbChecks, c.nbChecks >= 200);
 	}
 
 	@Test
-	public void testScan() throws Exception {
+	public void testScan() {
 		// contract: all AST nodes are visisted through method "scan"
 		Launcher launcher;
 		launcher = new Launcher();
@@ -233,7 +232,7 @@ public class CtScannerTest {
 			int nObject = 0;
 			int nElement = 0;
 			Deque<CollectionContext> contexts = new ArrayDeque<>();
-		};
+		}
 		Counter counter = new Counter();
 		launcher.getModel().getRootPackage().accept(new CtScanner() {
 			@Override

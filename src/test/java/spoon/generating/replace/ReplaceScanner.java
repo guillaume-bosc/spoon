@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2006-2017 INRIA and contributors
+ * Copyright (C) 2006-2018 INRIA and contributors
  * Spoon - http://spoon.gforge.inria.fr/
  *
  * This software is governed by the CeCILL-C License under French law and
@@ -41,8 +41,11 @@ import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.filter.TypeFilter;
+import spoon.support.util.ModelList;
+import spoon.support.util.ModelSet;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -90,7 +93,7 @@ public class ReplaceScanner extends CtScanner {
 			invArgs.remove(0);
 			CtInvocation getter = (CtInvocation) invArgs.get(0);
 
-			if (clone.getComments().size() == 0) {
+			if (clone.getComments().isEmpty()) {
 				// Add auto-generated comment.
 				final CtComment comment = factory.Core().createComment();
 				comment.setCommentType(CtComment.CommentType.INLINE);
@@ -104,10 +107,12 @@ public class ReplaceScanner extends CtScanner {
 		target.addMethod(clone);
 	}
 
+	private static Set<String> modelCollectionTypes = new HashSet<>(Arrays.asList(ModelList.class.getName(), ModelSet.class.getName()));
+	
 	private <T> CtInvocation<?> createInvocation(Factory factory, CtMethod<T> candidate, List<CtExpression<?>> invArgs, CtInvocation getter, Class getterTypeClass) {
 		CtInvocation<?> invocation;
 		Type type;
-		if (getterTypeClass.equals(Collection.class) || getterTypeClass.equals(List.class)) {
+		if (getterTypeClass.equals(Collection.class) || List.class.isAssignableFrom(getterTypeClass)) {
 			invocation = factory.Code().createInvocation(null, this.list, invArgs);
 			type = Type.LIST;
 		} else if (getterTypeClass.equals(Map.class)) {
@@ -129,11 +134,15 @@ public class ReplaceScanner extends CtScanner {
 			listener = listeners.get(listenerName);
 		} else {
 			final CtTypeReference getterType = getGetterType(factory, getter);
-			listener = createListenerClass(factory, listenerName, getterType, type);
+			CtTypeReference<?> setterParamType = getterType;
+			if (modelCollectionTypes.contains(setterParamType.getQualifiedName())) {
+				setterParamType = factory.Type().createReference(Collection.class);
+			}
+			listener = createListenerClass(factory, listenerName, setterParamType, type);
 			final CtMethod setter = getSetter(name, getter.getTarget().getType().getDeclaration());
 			final CtField field = updateField(listener, setter.getDeclaringType().getReference());
 			updateConstructor(listener, setter.getDeclaringType().getReference());
-			updateSetter(factory, (CtMethod<?>) listener.getMethodsByName("set").get(0), getterType, field, setter);
+			updateSetter(factory, (CtMethod<?>) listener.getMethodsByName("set").get(0), setterParamType, field, setter);
 			// Add auto-generated comment.
 			final CtComment comment = factory.Core().createComment();
 			comment.setCommentType(CtComment.CommentType.INLINE);

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.support.compiler.jdt;
 
@@ -23,13 +12,15 @@ import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
 import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+
+import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtLocalVariable;
-import spoon.reflect.code.CtStatement;
 import spoon.reflect.cu.CompilationUnit;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
@@ -47,6 +38,7 @@ import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.EarlyTerminatingScanner;
+import spoon.support.Internal;
 import spoon.support.SpoonClassNotFoundException;
 
 import java.util.ArrayDeque;
@@ -58,6 +50,7 @@ import java.util.List;
 import static spoon.reflect.ModelElementContainerDefaultCapacities.CASTS_CONTAINER_DEFAULT_CAPACITY;
 import static java.lang.String.format;
 
+@Internal
 public class ContextBuilder {
 
 	Deque<String> annotationValueName = new ArrayDeque<>();
@@ -72,8 +65,6 @@ public class ContextBuilder {
 	CompilationUnitDeclaration compilationunitdeclaration;
 
 	CompilationUnit compilationUnitSpoon;
-
-	Deque<String> label = new ArrayDeque<>();
 
 	boolean isBuildLambda = false;
 
@@ -97,7 +88,12 @@ public class ContextBuilder {
 		stack.push(new ASTPair(e, node));
 		if (!(e instanceof CtPackage) || (compilationUnitSpoon.getFile() != null && compilationUnitSpoon.getFile().getName().equals(DefaultJavaPrettyPrinter.JAVA_PACKAGE_DECLARATION))) {
 			if (compilationunitdeclaration != null && !e.isImplicit()) {
-				e.setPosition(this.jdtTreeBuilder.getPositionBuilder().buildPositionCtElement(e, node));
+				try {
+					e.setPosition(this.jdtTreeBuilder.getPositionBuilder().buildPositionCtElement(e, node));
+				} catch (Exception ex) {
+					e.setPosition(SourcePosition.NOPOSITION);
+					Launcher.LOGGER.warn("PositionBuilder failed for element " + e.toString(), ex);
+				}
 			}
 		}
 
@@ -108,9 +104,6 @@ public class ContextBuilder {
 			while (!casts.isEmpty()) {
 				((CtExpression<?>) current).addTypeCast(casts.remove(0).typeRef);
 			}
-		}
-		if (current instanceof CtStatement && !this.label.isEmpty()) {
-			((CtStatement) current).setLabel(this.label.pop());
 		}
 
 		try {
@@ -134,7 +127,10 @@ public class ContextBuilder {
 		if (!stack.isEmpty()) {
 			this.jdtTreeBuilder.getExiter().setChild(current);
 			this.jdtTreeBuilder.getExiter().setChild(pair.node);
-			this.jdtTreeBuilder.getExiter().scan(stack.peek().element);
+			ASTPair parentPair = stack.peek();
+			this.jdtTreeBuilder.getExiter().setParent(parentPair.node);
+			//visit ParentExiter using parent Spoon node, while it has access to parent's JDT node and child Spoon and JDT node
+			this.jdtTreeBuilder.getExiter().scan(parentPair.element);
 		}
 	}
 
@@ -200,11 +196,21 @@ public class ContextBuilder {
 		final CtVariable<T> variable = this.<T, CtVariable<T>>getVariableDeclaration(name, null);
 		if (variable == null) {
 			// note: this happens when using the new try(vardelc) structure
-			this.jdtTreeBuilder.getLogger().error(
-					format("Could not find declaration for variable %s at %s",
+			// note: this can happen when identifier is not a variable name but e.g. a Type name.
+			this.jdtTreeBuilder.getLogger().debug(
+					format("Could not find declaration for variable %s at %s.",
 							name, stack.peek().element.getPosition()));
 		}
 		return variable;
+	}
+
+	/**
+	 * Returns qualified name with appropriate package separator and inner type separator
+	 */
+	private static String getNormalQualifiedName(ReferenceBinding referenceBinding) {
+		String pkg = new String(referenceBinding.getPackage().readableName()).replaceAll("\\.", "\\" + CtPackage.PACKAGE_SEPARATOR);
+		String name = new String(referenceBinding.qualifiedSourceName()).replaceAll("\\.", "\\" + CtType.INNERTTYPE_SEPARATOR);
+		return pkg.equals("") ? name : pkg + "." + name;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -253,11 +259,12 @@ public class ContextBuilder {
 					final ReferenceBinding referenceBinding = referenceBindings.pop();
 					for (final FieldBinding fieldBinding : referenceBinding.fields()) {
 						if (name.equals(new String(fieldBinding.readableName()))) {
-							final String qualifiedNameOfParent =
-									new String(referenceBinding.readableName());
+							final String qualifiedNameOfParent = getNormalQualifiedName(referenceBinding);
+
 							final CtType parentOfField = referenceBinding.isClass()
 									? classFactory.create(qualifiedNameOfParent)
 									: interfaceFactory.create(qualifiedNameOfParent);
+
 							U field = (U) fieldFactory.create(parentOfField,
 									EnumSet.noneOf(ModifierKind.class),
 									referenceBuilder.getTypeReference(fieldBinding.type),
@@ -285,8 +292,7 @@ public class ContextBuilder {
 		if (lookingForFields) {
 			final CtReference potentialReferenceToField =
 					referenceBuilder.getDeclaringReferenceFromImports(name.toCharArray());
-			if (potentialReferenceToField != null
-					&& potentialReferenceToField instanceof CtTypeReference) {
+			if (potentialReferenceToField instanceof CtTypeReference) {
 				final CtTypeReference typeReference = (CtTypeReference) potentialReferenceToField;
 				try {
 					final Class classOfType = typeReference.getActualClass();
@@ -402,5 +408,19 @@ public class ContextBuilder {
 			setResult(element);
 			terminate();
 		}
+	}
+
+	/**
+	 * @return line separator positions of actually processed compilation unit
+	 */
+	public int[] getCompilationUnitLineSeparatorPositions() {
+		return compilationunitdeclaration.compilationResult.lineSeparatorPositions;
+	}
+
+	/**
+	 * @return char content of actually processed compilation unit
+	 */
+	public char[] getCompilationUnitContents() {
+		return compilationunitdeclaration.compilationResult.compilationUnit.getContents();
 	}
 }

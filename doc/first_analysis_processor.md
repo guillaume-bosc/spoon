@@ -31,7 +31,7 @@ This super class takes a generic type parameter to know what type you want inspe
 For this tutorial, we inspect a catch, a `CtCatch` ([javadoc](http://spoon.gforge.inria.fr/mvnsites/spoon-core/apidocs/spoon/reflect/code/CtCatch.html)).
 
 {{site.data.alerts.note}} 
-You can view the complete meta model of Spoon at <a href="diagrams.html">this page</a>. 
+You can view the complete meta model of Spoon <a href="structural_elements.html">there</a> and <a href="code_elements.html">there</a>.
 It is a simple way to know what you can inspect with processors.
 {{site.data.alerts.end}}
 
@@ -87,3 +87,6 @@ $ java -classpath /path/to/binary/of/your/processor.jar:spoon-core-{{site.spoon_
 2. Specify your processors in fully qualified name (here `processors.CatchProcessor`).
 {{site.data.alerts.end}}
 
+## Bytecode analysis
+
+Note that spoon also supports the analysis of bytecode through decompilation. See [javadoc](http://spoon.gforge.inria.fr/mvnsites/spoon-core/apidocs/spoon/JarLauncher.html).

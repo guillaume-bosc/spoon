@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon;
 
@@ -39,7 +28,6 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.FactoryImpl;
-import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.Filter;
 import spoon.reflect.visitor.PrettyPrinter;
 import spoon.reflect.visitor.filter.AbstractFilter;
@@ -142,6 +130,11 @@ public class Launcher implements SpoonAPI {
 	}
 
 	static {
+		// Initialize log output path with the default value
+		if (System.getProperty("spoon.log.path") == null) {
+			System.setProperty("spoon.log.path", "${java.io.tmpdir}/spoon-log.log");
+		}
+
 		jsapSpec = defineArgs();
 	}
 
@@ -680,13 +673,18 @@ public class Launcher implements SpoonAPI {
 	}
 
 	public JavaOutputProcessor createOutputWriter() {
-		JavaOutputProcessor outputProcessor = new JavaOutputProcessor(createPrettyPrinter());
+		/*
+		 * create without printer, because Launcher is not initialized yet
+		 * so we cannot setup correct printer validators at this time
+		 * The printer is created lazily using Environment
+		 */
+		JavaOutputProcessor outputProcessor = new JavaOutputProcessor();
 		outputProcessor.setFactory(this.getFactory());
 		return outputProcessor;
 	}
 
 	public PrettyPrinter createPrettyPrinter() {
-		return new DefaultJavaPrettyPrinter(getEnvironment());
+		return getEnvironment().createPrettyPrinter();
 	}
 
 	/**
@@ -714,7 +712,6 @@ public class Launcher implements SpoonAPI {
 
 		env.reportProgressMessage("start processing...");
 
-		long t = 0;
 		long tstart = System.currentTimeMillis();
 
 		buildModel();
@@ -728,7 +725,7 @@ public class Launcher implements SpoonAPI {
 			modelBuilder.compile(InputType.CTTYPES);
 		}
 
-		t = System.currentTimeMillis();
+		long t = System.currentTimeMillis();
 
 		env.debugMessage("program spooning done in " + (t - tstart) + " ms");
 		env.reportEnd();

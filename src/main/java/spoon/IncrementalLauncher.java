@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon;
 
@@ -44,6 +33,7 @@ import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.CtPackage;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.Factory;
+import spoon.reflect.reference.CtTypeReference;
 import spoon.support.SerializationModelStreamer;
 
 /**
@@ -185,9 +175,9 @@ public class IncrementalLauncher extends Launcher {
 			oldFactory.getModel().setBuildModelIsFinished(false);
 
 			// Build model incrementally.
-			mRemovedSources = new HashSet<File>(CollectionUtils.subtract(mCacheInfo.inputSourcesMap.keySet(), mInputSources));
-			mAddedSources = new HashSet<File>(CollectionUtils.subtract(mInputSources, mCacheInfo.inputSourcesMap.keySet()));
-			mCommonSources = new HashSet<File>(CollectionUtils.intersection(mCacheInfo.inputSourcesMap.keySet(), mInputSources));
+			mRemovedSources = new HashSet<>(CollectionUtils.subtract(mCacheInfo.inputSourcesMap.keySet(), mInputSources));
+			mAddedSources = new HashSet<>(CollectionUtils.subtract(mInputSources, mCacheInfo.inputSourcesMap.keySet()));
+			mCommonSources = new HashSet<>(CollectionUtils.intersection(mCacheInfo.inputSourcesMap.keySet(), mInputSources));
 
 			Set<File> incrementalSources = new HashSet<>(mAddedSources);
 			for (File e : mCommonSources) {
@@ -212,11 +202,13 @@ public class IncrementalLauncher extends Launcher {
 					type.delete();
 					continue;
 				}
+				// If a type refers to some changed type, we should rebuild it.
+				Set<CtTypeReference<?>> referencedTypes = type.getReferencedTypes();
 				for (CtType<?> changedType : changedTypes) {
-					// We should also rebuild types, that refer to changed types.
-					if (type.getReferencedTypes().contains(changedType.getReference())) {
+					if (referencedTypes.contains(changedType.getReference())) {
 						incrementalSources.add(typeFile);
 						type.delete();
+						break;
 					}
 				}
 			}
@@ -241,7 +233,7 @@ public class IncrementalLauncher extends Launcher {
 			setBinaryOutputDirectory(mClassFilesDir);
 		}
 
-		getEnvironment().setSourceClasspath(mSourceClasspath.toArray(new String[mSourceClasspath.size()]));
+		getEnvironment().setSourceClasspath(mSourceClasspath.toArray(new String[0]));
 	}
 
 	/**
@@ -280,7 +272,7 @@ public class IncrementalLauncher extends Launcher {
 		newCacheInfo.lastBuildTime = System.currentTimeMillis();
 		Map<File, Set<File>> newSourcesMap = new HashMap<>();
 		for (Entry<String, CompilationUnit> e : factory.CompilationUnit().getMap().entrySet()) {
-			newSourcesMap.put(new File(e.getKey()), new HashSet<File>(e.getValue().getBinaryFiles()));
+			newSourcesMap.put(new File(e.getKey()), new HashSet<>(e.getValue().getBinaryFiles()));
 		}
 
 		if (mCacheInfo != null) {

@@ -1,18 +1,7 @@
 /**
- * Copyright (C) 2006-2018 INRIA and contributors
- * Spoon - http://spoon.gforge.inria.fr/
+ * Copyright (C) 2006-2019 INRIA and contributors
  *
- * This software is governed by the CeCILL-C License under French law and
- * abiding by the rules of distribution of free software. You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at http://www.cecill.info.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the CeCILL-C License for more details.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * Spoon is available either under the terms of the MIT License (see LICENSE-MIT.txt) of the Cecill-C License (see LICENSE-CECILL-C.txt). You as the user are entitled to choose the terms under which to adopt Spoon.
  */
 package spoon.reflect.reference;
 
@@ -21,6 +10,7 @@ import spoon.reflect.annotations.PropertySetter;
 import spoon.reflect.declaration.CtShadowable;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeInformation;
+import spoon.reflect.declaration.CtTypeMember;
 import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
@@ -73,6 +63,7 @@ public interface CtTypeReference<T> extends CtReference, CtActualTypeContainer, 
 	 * @return the referenced element or <code>null</code> if the type
 	 * declaration is not the analyzed source files.
 	 */
+	@Override
 	@DerivedProperty
 	CtType<T> getDeclaration();
 
@@ -157,6 +148,11 @@ public interface CtTypeReference<T> extends CtReference, CtActualTypeContainer, 
 	boolean canAccess(CtTypeReference<?> type);
 
 	/**
+	 * @return true if this type can access that the `typeMember` in another type based on public, protected, package protected and private modifiers.
+	 */
+	boolean canAccess(CtTypeMember typeMember);
+
+	/**
 	 * Returns this, or top level type of this, if this is an inner type
 	 */
 	@DerivedProperty
@@ -212,5 +208,17 @@ public interface CtTypeReference<T> extends CtReference, CtActualTypeContainer, 
 	@DerivedProperty
 	CtTypeParameter getTypeParameterDeclaration();
 
+	/**
+	 * @param parentIsImplicit false then fully qualified name is printed.
+	 * 		true then type simple name is printed.
+	 */
+	@DerivedProperty
+	CtTypeReference<T> setImplicitParent(boolean parentIsImplicit);
 
+	/**
+	 * @return false then fully qualified name is printed.
+	 * 		true then type simple name is printed.
+	 */
+	@DerivedProperty
+	boolean isImplicitParent();
 }
